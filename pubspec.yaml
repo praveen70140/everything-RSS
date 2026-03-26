@@ -16,15 +16,15 @@ dependencies:
   video_player: ^2.11.1
   http: ^1.2.0
   xml: ^6.3.0
-  isar: ^3.1.0+1
-  isar_flutter_libs: ^3.1.0+1
   path_provider: ^2.1.5
+  hive_ce: ^2.19.3
+  hive_ce_flutter: ^2.3.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   build_runner: any
-  isar_generator: ^3.1.0+1
+  hive_ce_generator: ^1.11.1
 
 flutter:
   uses-material-design: true

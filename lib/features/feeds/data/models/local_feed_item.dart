@@ -1,16 +1,22 @@
-import 'package:isar/isar.dart';
+import 'package:hive_ce/hive.dart';
 
 part 'local_feed_item.g.dart';
 
-@collection
-class LocalFeedItem {
-  Id id = Isar.autoIncrement;
+@HiveType(typeId: 1)
+class LocalFeedItem extends HiveObject {
+  @HiveField(0)
+  int id = -1;
 
+  @HiveField(1)
   late String name;
+
+  @HiveField(2)
   late String url;
-  
+
   // Optional reference to a folder ID. null means it's in the root.
-  int? folderId; 
-  
+  @HiveField(3)
+  int? folderId;
+
+  @HiveField(4)
   int sortOrder = 0;
 }
