@@ -23,11 +23,13 @@ class FeedsPage extends StatefulWidget {
 class _FeedsPageState extends State<FeedsPage> {
   final RssService _rssService = RssService();
   List<FeedEntry> _entries = [];
-  Set<String> _hiddenEntryIds = {}; // Local state to hide items removed during this session
+  Set<String> _hiddenEntryIds =
+      {}; // Local state to hide items removed during this session
   bool _isLoading = true;
   String? _error;
-  
-  String _currentFeedUrl = 'https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml';
+
+  String _currentFeedUrl =
+      'https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml';
 
   @override
   void initState() {
@@ -45,7 +47,7 @@ class _FeedsPageState extends State<FeedsPage> {
     try {
       final entries = await _rssService.fetchFeed(url);
       final hiddenIds = await localDb.getAllSavedEntryIds(url);
-      
+
       setState(() {
         _entries = entries;
         _hiddenEntryIds = hiddenIds.toSet();
@@ -70,7 +72,7 @@ class _FeedsPageState extends State<FeedsPage> {
       ..status = status;
 
     await localDb.saveFeedEntry(savedEntry);
-    
+
     setState(() {
       _hiddenEntryIds.add(entry.id);
     });
@@ -147,7 +149,7 @@ class _FeedsPageState extends State<FeedsPage> {
       drawer: FeedsDrawer(
         onFeedSelected: (url) {
           Navigator.pop(context); // Close the drawer
-          _loadFeed(url);         // Load the selected feed
+          _loadFeed(url); // Load the selected feed
         },
       ),
       body: _buildBody(),
@@ -172,7 +174,10 @@ class _FeedsPageState extends State<FeedsPage> {
               const SizedBox(height: 16),
               Text(
                 'Failed to load feed',
-                style: GoogleFonts.epilogue(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.text),
+                style: GoogleFonts.epilogue(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.text),
               ),
               const SizedBox(height: 8),
               Text(
@@ -195,15 +200,17 @@ class _FeedsPageState extends State<FeedsPage> {
       );
     }
 
-    final visibleEntries = _entries.where((e) => !_hiddenEntryIds.contains(e.id)).toList();
+    final visibleEntries =
+        _entries.where((e) => !_hiddenEntryIds.contains(e.id)).toList();
 
     return ListView.separated(
       itemCount: visibleEntries.length,
-      separatorBuilder: (context, index) => const Divider(color: AppColors.surface1, height: 1),
+      separatorBuilder: (context, index) =>
+          const Divider(color: AppColors.surface1, height: 1),
       itemBuilder: (context, index) {
         final entry = visibleEntries[index];
         final isDense = index > 5 && entry.mediaType == MediaType.text;
-        
+
         Widget content = _buildContentItem(entry, isDense);
 
         return Dismissible(
@@ -223,7 +230,9 @@ class _FeedsPageState extends State<FeedsPage> {
               children: [
                 Icon(Icons.check_circle, color: Colors.white),
                 SizedBox(width: 8),
-                Text('TO-DO', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                Text('TO-DO',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -234,7 +243,9 @@ class _FeedsPageState extends State<FeedsPage> {
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Text('ARCHIVE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                Text('ARCHIVE',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
                 SizedBox(width: 8),
                 Icon(Icons.archive, color: Colors.white),
               ],

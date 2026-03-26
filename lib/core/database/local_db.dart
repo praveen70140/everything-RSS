@@ -109,17 +109,14 @@ class LocalDatabase {
 
   Future<void> saveFeedEntry(SavedFeedEntry entry) async {
     // Check if it exists and we are just updating
-    final existing = _savedEntriesBox.values
+    final existingKey = _savedEntriesBox.values
         .where((e) => e.entryId == entry.entryId)
-        .firstOrNull;
-    if (existing != null) {
-      // Overwrite the existing
-      entry.isarId = existing.isarId;
-      await _savedEntriesBox.put(existing.key, entry);
+        .firstOrNull
+        ?.key;
+    if (existingKey != null) {
+      await _savedEntriesBox.put(existingKey, entry);
     } else {
-      final id = await _savedEntriesBox.add(entry);
-      entry.isarId = id;
-      await entry.save();
+      await _savedEntriesBox.add(entry);
     }
   }
 
@@ -141,10 +138,9 @@ class LocalDatabase {
   }
 
   Future<List<String>> getAllSavedEntryIds(String feedUrl) async {
-    return _savedEntriesBox.values
-        .where((e) => e.feedUrl == feedUrl)
-        .map((e) => e.entryId)
-        .toList();
+    // We return ALL saved entry IDs regardless of feedUrl so that if an article
+    // appears in multiple feeds or slightly different urls, it remains hidden.
+    return _savedEntriesBox.values.map((e) => e.entryId).toList();
   }
 }
 
