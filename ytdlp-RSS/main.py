@@ -22,7 +22,16 @@ CACHE_DURATION = 1800  # 30 minutes
 
 def run_yt_dlp(args: list) -> dict:
     """Helper to run yt-dlp and return JSON output."""
-    cmd = ["yt-dlp", "--no-warnings", "--no-check-certificates"] + args
+    # Add User-Agent and common flags for better reliability
+    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    cmd = [
+        "yt-dlp",
+        "--no-warnings",
+        "--no-check-certificates",
+        "--user-agent", user_agent,
+        "--geo-bypass"
+    ] + args
+    
     start_time = time.perf_counter()
     try:
         logger.info(f"Executing yt-dlp with args: {args}")
@@ -38,15 +47,43 @@ def run_yt_dlp(args: list) -> dict:
         logger.error("Failed to parse yt-dlp JSON output")
         raise HTTPException(status_code=500, detail="Failed to parse yt-dlp output")
 
+@app.get("/links.txt")
+async def get_links():
+    """
+    Returns a newline-separated list of supported domains for the Third-Party Servers Spec.
+    This list includes major platforms supported by yt-dlp.
+    """
+    domains = [
+        "youtube.com",
+        "youtu.be",
+        "twitter.com",
+        "x.com",
+        "instagram.com",
+        "tiktok.com",
+        "twitch.tv",
+        "vimeo.com",
+        "soundcloud.com",
+        "facebook.com",
+        "reddit.com",
+        "bilibili.com",
+        "dailymotion.com"
+    ]
+    return Response(content="\n".join(domains), media_type="text/plain")
+
 @app.get("/feed")
 async def generate_feed(url: str, request: Request):
     if not url:
         raise HTTPException(status_code=400, detail="URL query parameter is required")
     
-    # 1. Fetch metadata. 
-    # Reducing limit to 15 as requested to improve speed.
+    # Pre-process URL
+    if "x.com" in url:
+        url = url.replace("x.com", "twitter.com")
+        logger.info(f"Mapped x.com to {url} for better compatibility")
+    
+    # 1. Fetch metadata using --flat-playlist for speed
+    # This fetches only the list of entries without visiting every sub-URL
     logger.info(f"Generating feed for: {url}")
-    data = run_yt_dlp(["-J", "--playlist-end", "15", url])
+    data = run_yt_dlp(["-J", "--flat-playlist", "--playlist-end", "15", url])
     
     # 2. Setup Feed Generator
     fg = FeedGenerator()
@@ -56,13 +93,12 @@ async def generate_feed(url: str, request: Request):
     fg.link(href=url, rel="alternate")
     fg.description(data.get("description") or f"RSS feed for {url}")
     
-    # Load Media RSS extension for images and extra media info
+    # Load Media RSS extension for images
     fg.load_extension('media', atom=False, rss=True)
 
     # 3. Process items
     entries = data.get("entries", [])
     if not entries and "id" in data:
-        # Handle single video URL
         entries = [data]
     
     logger.info(f"Processing {len(entries)} items for feed")
@@ -71,15 +107,26 @@ async def generate_feed(url: str, request: Request):
         
         fe = fg.add_entry()
         
-        # Core RSS tags
-        video_id = entry.get("id") or "unknown"
+        # ID and Title
+        video_id = entry.get("id") or entry.get("url") or "unknown"
         fe.id(video_id)
-        fe.title(entry.get("title") or "Untitled")
+        fe.title(entry.get("title") or "Untitled Post")
         
-        webpage_url = entry.get("webpage_url") or entry.get("url") or url
+        # Handle webpage URL in flat-playlist mode
+        webpage_url = entry.get("webpage_url") or entry.get("url")
+        if webpage_url and not webpage_url.startswith("http"):
+            # Construct standard URLs if only ID is provided
+            if "youtube" in (data.get("extractor") or ""):
+                webpage_url = f"https://www.youtube.com/watch?v={video_id}"
+            elif "twitter" in (data.get("extractor") or ""):
+                webpage_url = f"https://twitter.com/i/status/{video_id}"
+        
+        if not webpage_url:
+            webpage_url = url
+            
         fe.link(href=webpage_url)
         
-        # pubDate handling
+        # pubDate
         ts = entry.get("timestamp") or entry.get("release_timestamp")
         if ts:
             fe.pubDate(datetime.fromtimestamp(ts, tz=timezone.utc))
@@ -91,11 +138,11 @@ async def generate_feed(url: str, request: Request):
         else:
             fe.pubDate(datetime.now(timezone.utc))
             
-        # Description (HTML allowed)
-        desc = entry.get("description") or "No description."
+        # Description
+        desc = entry.get("description") or entry.get("title") or "No description."
         fe.description(desc)
         
-        # Images (Media RSS)
+        # Thumbnails
         thumbnails = entry.get("thumbnails", [])
         if not thumbnails and entry.get("thumbnail"):
             thumbnails = [{"url": entry.get("thumbnail")}]
@@ -104,19 +151,16 @@ async def generate_feed(url: str, request: Request):
             if isinstance(thumb, dict) and thumb.get("url"):
                 fe.media.content({'url': thumb['url'], 'type': 'image/jpeg', 'medium': 'image'})
         
-        # Video/Audio Enclosure
-        # Point to the redirect endpoint
+        # Enclosure (Stream Redirect)
         encoded_src = urllib.parse.quote(webpage_url)
-        # Use request.base_url to ensure absolute URLs
         base_url = str(request.base_url).rstrip('/')
         stream_url = f"{base_url}/stream/{video_id}?src={encoded_src}"
         
-        # Check if it's likely audio or video
-        mime_type = "video/mp4"
-        if entry.get("vcodec") == "none":
-            mime_type = "audio/mpeg"
-        
-        fe.enclosure(stream_url, '0', mime_type)
+        # Default to video/mp4 as we can't check formats in flat mode
+        fe.enclosure(stream_url, '0', "video/mp4")
+
+    rss_content = fg.rss_str(pretty=True)
+    return Response(content=rss_content, media_type="application/rss+xml")
 
     rss_content = fg.rss_str(pretty=True)
     return Response(content=rss_content, media_type="application/rss+xml")
