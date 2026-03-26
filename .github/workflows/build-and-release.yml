@@ -1,0 +1,50 @@
+name: Build and Release Android APK
+
+on:
+  push:
+    branches:
+      - '**'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v3
+        with:
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Patch isar_flutter_libs namespace
+        # We need to temporarily patch this plugin in CI as it causes a missing namespace error on modern AGP builds
+        run: |
+          find ~/.pub-cache/hosted/pub.dev -name "build.gradle" | grep isar_flutter_libs | xargs sed -i -e '/android {/a\    namespace "dev.isar.isar_flutter_libs"' || echo "No patch applied"
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Get short SHA
+        id: slug
+        run: echo "sha8=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ steps.slug.outputs.sha8 }}
+          name: Build ${{ steps.slug.outputs.sha8 }}
+          body: "Automated Android release build for commit ${{ github.sha }}"
+          files: build/app/outputs/flutter-apk/app-release.apk
