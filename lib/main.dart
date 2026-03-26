@@ -13,13 +13,13 @@ import 'features/media/presentation/widgets/mini_player.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize Isar Local Database
   await localDb.init();
-  
+
   // Initialize Audio Service
   final audioHandler = await initAudioService();
-  
+
   runApp(
     ProviderScope(
       overrides: [
@@ -54,6 +54,8 @@ class AppShell extends ConsumerWidget {
     return PipWidget(
       onPipExited: () {
         WidgetsBinding.instance.addPostFrameCallback((_) {
+          final controller = ref.read(pipVideoProvider);
+          controller?.dispose();
           ref.read(pipVideoProvider.notifier).setController(null);
         });
       },

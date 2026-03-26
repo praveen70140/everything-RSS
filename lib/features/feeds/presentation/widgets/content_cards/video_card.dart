@@ -33,16 +33,17 @@ class _VideoCardState extends ConsumerState<VideoCard> {
       _isPlayerActive = true;
     });
 
-    _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
-    
+    _videoPlayerController =
+        VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+
     try {
       await _videoPlayerController!.initialize();
       _chewieController = ChewieController(
         videoPlayerController: _videoPlayerController!,
         autoPlay: true,
         looping: false,
-        aspectRatio: _videoPlayerController!.value.aspectRatio > 0 
-            ? _videoPlayerController!.value.aspectRatio 
+        aspectRatio: _videoPlayerController!.value.aspectRatio > 0
+            ? _videoPlayerController!.value.aspectRatio
             : 16 / 9,
         materialProgressColors: ChewieProgressColors(
           playedColor: AppColors.blue,
@@ -56,7 +57,7 @@ class _VideoCardState extends ConsumerState<VideoCard> {
           showPlayButton: true,
         ),
       );
-      
+
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -67,7 +68,7 @@ class _VideoCardState extends ConsumerState<VideoCard> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _isPlayerActive = false; 
+          _isPlayerActive = false;
         });
       }
     }
@@ -75,14 +76,14 @@ class _VideoCardState extends ConsumerState<VideoCard> {
 
   void _enterPipMode() {
     if (_videoPlayerController == null) return;
-    
+
     // Set the global provider so the AppShell PipWidget knows which controller to use
     ref.read(pipVideoProvider.notifier).setController(_videoPlayerController);
 
     // Calculate aspect ratio
     final width = _videoPlayerController!.value.size.width.toInt();
     final height = _videoPlayerController!.value.size.height.toInt();
-    
+
     int w = width > 0 ? width : 16;
     int h = height > 0 ? height : 9;
 
@@ -91,7 +92,7 @@ class _VideoCardState extends ConsumerState<VideoCard> {
     if (ratio > 2.39) {
       w = 239;
       h = 100;
-    } else if (ratio < 1/2.39) {
+    } else if (ratio < 1 / 2.39) {
       w = 100;
       h = 239;
     }
@@ -103,7 +104,10 @@ class _VideoCardState extends ConsumerState<VideoCard> {
 
   @override
   void dispose() {
-    _videoPlayerController?.dispose();
+    final pipController = ref.read(pipVideoProvider);
+    if (pipController != _videoPlayerController) {
+      _videoPlayerController?.dispose();
+    }
     _chewieController?.dispose();
     super.dispose();
   }
@@ -119,7 +123,8 @@ class _VideoCardState extends ConsumerState<VideoCard> {
             color: AppColors.crust,
             child: _isPlayerActive
                 ? (_isLoading || _chewieController == null
-                    ? const Center(child: CircularProgressIndicator(color: AppColors.blue))
+                    ? const Center(
+                        child: CircularProgressIndicator(color: AppColors.blue))
                     : Stack(
                         children: [
                           Chewie(controller: _chewieController!),
@@ -127,7 +132,9 @@ class _VideoCardState extends ConsumerState<VideoCard> {
                             top: 16,
                             right: 16,
                             child: IconButton(
-                              icon: const Icon(Icons.picture_in_picture_alt_rounded, color: Colors.white),
+                              icon: const Icon(
+                                  Icons.picture_in_picture_alt_rounded,
+                                  color: Colors.white),
                               onPressed: _enterPipMode,
                               tooltip: 'Picture in Picture',
                             ),
@@ -194,7 +201,10 @@ class _VideoCardState extends ConsumerState<VideoCard> {
               ),
               child: const Text(
                 'TAP TO LOAD VIDEO',
-                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold),
               ),
             ),
           )
