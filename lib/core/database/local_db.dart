@@ -10,6 +10,7 @@ class LocalDatabase {
   late Box<LocalFeedItem> _feedsBox;
   late Box<SavedFeedEntry> _savedEntriesBox;
   late Box<ThirdPartyServer> _thirdPartyServersBox;
+  late Box<String> _feedXmlCacheBox;
 
   Future<void> init() async {
     await Hive.initFlutter();
@@ -22,6 +23,7 @@ class LocalDatabase {
     _savedEntriesBox = await Hive.openBox<SavedFeedEntry>('saved_entries');
     _thirdPartyServersBox =
         await Hive.openBox<ThirdPartyServer>('third_party_servers');
+    _feedXmlCacheBox = await Hive.openBox<String>('feed_xml_cache');
 
     // Add default mock data if completely empty
     if (_foldersBox.isEmpty && _feedsBox.isEmpty) {
@@ -189,6 +191,16 @@ class LocalDatabase {
       // If parsing fails, just return original
     }
     return originalUrl;
+  }
+
+  // --- Feed Cache ---
+
+  Future<String?> getCachedFeedXml(String url) async {
+    return _feedXmlCacheBox.get(url);
+  }
+
+  Future<void> saveCachedFeedXml(String url, String xml) async {
+    await _feedXmlCacheBox.put(url, xml);
   }
 }
 

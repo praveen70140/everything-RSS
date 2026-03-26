@@ -40,7 +40,7 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
     _loadFeed(_currentFeedUrl);
   }
 
-  Future<void> _loadFeed(String url) async {
+  Future<void> _loadFeed(String url, {bool forceRefresh = false}) async {
     setState(() {
       _currentFeedUrl = url;
       _isLoading = true;
@@ -49,7 +49,8 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
 
     try {
       final fetchUrl = await localDb.getProxyUrl(url);
-      final entries = await _rssService.fetchFeed(fetchUrl);
+      final entries =
+          await _rssService.fetchFeed(fetchUrl, forceRefresh: forceRefresh);
       final hiddenIds = await localDb.getAllSavedEntryIds(url);
 
       setState(() {
@@ -209,7 +210,7 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
 
     // Call load feed with search URL directly. It won't be proxied again because
     // the search domain likely won't match the supported domains exactly as an original URL.
-    _loadFeed(searchUrl);
+    _loadFeed(searchUrl, forceRefresh: true);
   }
 
   @override
@@ -234,7 +235,7 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => _loadFeed(_currentFeedUrl),
+            onPressed: () => _loadFeed(_currentFeedUrl, forceRefresh: true),
             tooltip: 'Refresh Feed',
           ),
         ],

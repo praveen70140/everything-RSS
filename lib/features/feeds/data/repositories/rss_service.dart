@@ -2,49 +2,71 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:xml/xml.dart';
 import '../models/feed_entry.dart';
+import '../../../../core/database/local_db.dart';
 
 class RssService {
-  Future<List<FeedEntry>> fetchFeed(String url) async {
+  Future<List<FeedEntry>> fetchFeed(String url,
+      {bool forceRefresh = false}) async {
     try {
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-          'Accept': 'application/rss+xml, application/xml, text/xml, */*',
-        },
-      );
-      
-      if (response.statusCode == 200) {
-        // Decode body handling potential encoding issues and File/Byte streams
-        String xmlString;
-        try {
-          xmlString = utf8.decode(response.bodyBytes, allowMalformed: true);
-        } catch (_) {
-          // Fallback if utf8 fails completely
-          xmlString = String.fromCharCodes(response.bodyBytes);
-        }
+      String xmlString = '';
+      bool fromCache = false;
 
-        // Clean up BOM (Byte Order Mark) if present (common in file-served XML)
-        if (xmlString.startsWith('\ufeff')) {
-          xmlString = xmlString.substring(1);
+      if (!forceRefresh) {
+        final cached = await localDb.getCachedFeedXml(url);
+        if (cached != null && cached.isNotEmpty) {
+          xmlString = cached;
+          fromCache = true;
         }
-        
+      }
+
+      if (!fromCache) {
+        final response = await http.get(
+          Uri.parse(url),
+          headers: {
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+          },
+        );
+
+        if (response.statusCode == 200) {
+          // Decode body handling potential encoding issues and File/Byte streams
+          try {
+            xmlString = utf8.decode(response.bodyBytes, allowMalformed: true);
+          } catch (_) {
+            // Fallback if utf8 fails completely
+            xmlString = String.fromCharCodes(response.bodyBytes);
+          }
+
+          // Clean up BOM (Byte Order Mark) if present (common in file-served XML)
+          if (xmlString.startsWith('\ufeff')) {
+            xmlString = xmlString.substring(1);
+          }
+
+          await localDb.saveCachedFeedXml(url, xmlString);
+        } else {
+          throw Exception(
+              'Failed to load RSS feed (Status: ${response.statusCode})');
+        }
+      }
+
+      if (xmlString.isNotEmpty) {
         final document = XmlDocument.parse(xmlString);
-        
+
         final items = document.findAllElements('item');
         List<FeedEntry> entries = [];
-        
+
         for (var item in items) {
           final title = _getElementText(item, 'title') ?? 'No Title';
           final link = _getElementText(item, 'link') ?? '';
           String description = _getElementText(item, 'description') ?? '';
-          
+
           // Clean up HTML tags from description for a clean subtitle
           description = description.replaceAll(RegExp(r'<[^>]*>'), '').trim();
           if (description.length > 150) {
             description = '${description.substring(0, 150)}...';
           }
-          
+
           String? mediaUrl;
           MediaType mediaType = MediaType.text;
 
@@ -54,7 +76,7 @@ class RssService {
             final enclosure = enclosures.first;
             final type = enclosure.getAttribute('type') ?? '';
             mediaUrl = enclosure.getAttribute('url');
-            
+
             if (type.startsWith('video')) {
               mediaType = MediaType.video;
             } else if (type.startsWith('audio')) {
@@ -63,7 +85,7 @@ class RssService {
               mediaType = MediaType.image;
             }
           }
-          
+
           // Check media:content (common in news feeds)
           if (mediaType == MediaType.text) {
             final mediaContents = item.findAllElements('media:content');
@@ -71,14 +93,18 @@ class RssService {
               final mediaContent = mediaContents.first;
               final type = mediaContent.getAttribute('type') ?? '';
               mediaUrl = mediaContent.getAttribute('url');
-              
-              if (type.startsWith('video') || (mediaContent.getAttribute('medium') == 'video')) {
+
+              if (type.startsWith('video') ||
+                  (mediaContent.getAttribute('medium') == 'video')) {
                 mediaType = MediaType.video;
-              } else if (type.startsWith('audio') || (mediaContent.getAttribute('medium') == 'audio')) {
+              } else if (type.startsWith('audio') ||
+                  (mediaContent.getAttribute('medium') == 'audio')) {
                 mediaType = MediaType.audio;
-              } else if (type.startsWith('image') || (mediaContent.getAttribute('medium') == 'image')) {
+              } else if (type.startsWith('image') ||
+                  (mediaContent.getAttribute('medium') == 'image')) {
                 mediaType = MediaType.image;
-              } else if (mediaUrl != null && (mediaUrl.endsWith('.jpg') || mediaUrl.endsWith('.png'))) {
+              } else if (mediaUrl != null &&
+                  (mediaUrl.endsWith('.jpg') || mediaUrl.endsWith('.png'))) {
                 mediaType = MediaType.image;
               }
             }
@@ -86,16 +112,19 @@ class RssService {
 
           // Fallback check for images hidden in description HTML before we stripped it
           if (mediaType == MediaType.text) {
-             final rawDesc = _getElementText(item, 'description') ?? '';
-             final imgMatch = RegExp(r'<img[^>]+src="([^">]+)"').firstMatch(rawDesc);
-             if (imgMatch != null) {
-               mediaUrl = imgMatch.group(1);
-               mediaType = MediaType.image;
-             }
+            final rawDesc = _getElementText(item, 'description') ?? '';
+            final imgMatch =
+                RegExp(r'<img[^>]+src="([^">]+)"').firstMatch(rawDesc);
+            if (imgMatch != null) {
+              mediaUrl = imgMatch.group(1);
+              mediaType = MediaType.image;
+            }
           }
 
           entries.add(FeedEntry(
-            id: link.isNotEmpty ? link : DateTime.now().microsecondsSinceEpoch.toString(),
+            id: link.isNotEmpty
+                ? link
+                : DateTime.now().microsecondsSinceEpoch.toString(),
             title: title,
             subtitle: description,
             link: link,
@@ -103,11 +132,11 @@ class RssService {
             mediaUrl: mediaUrl,
           ));
         }
-        
+
         return entries;
-      } else {
-        throw Exception('Failed to load RSS feed (Status: ${response.statusCode})');
       }
+
+      return [];
     } catch (e) {
       print('Error fetching RSS: $e');
       return [];
