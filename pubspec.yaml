@@ -19,6 +19,12 @@ dependencies:
   path_provider: ^2.1.5
   hive_ce: ^2.19.3
   hive_ce_flutter: ^2.3.4
+  flutter_riverpod: ^3.3.1
+  audio_service: ^0.18.18
+  audio_session: ^0.2.3
+  simple_pip_mode: ^1.1.0
+  cached_network_image: ^3.4.1
+  rxdart: ^0.28.0
 
 dev_dependencies:
   flutter_test:

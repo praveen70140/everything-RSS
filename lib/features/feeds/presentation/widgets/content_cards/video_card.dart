@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
+import 'package:simple_pip_mode/simple_pip.dart';
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/media/media_provider.dart';
 
-class VideoCard extends StatefulWidget {
+class VideoCard extends ConsumerStatefulWidget {
   final String videoUrl;
   final String title;
 
@@ -15,10 +18,10 @@ class VideoCard extends StatefulWidget {
   });
 
   @override
-  State<VideoCard> createState() => _VideoCardState();
+  ConsumerState<VideoCard> createState() => _VideoCardState();
 }
 
-class _VideoCardState extends State<VideoCard> {
+class _VideoCardState extends ConsumerState<VideoCard> {
   VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
   bool _isPlayerActive = false;
@@ -36,9 +39,11 @@ class _VideoCardState extends State<VideoCard> {
       await _videoPlayerController!.initialize();
       _chewieController = ChewieController(
         videoPlayerController: _videoPlayerController!,
-        autoPlay: true, // Auto-play once the user clicks the placeholder
+        autoPlay: true,
         looping: false,
-        aspectRatio: _videoPlayerController!.value.aspectRatio > 0 ? _videoPlayerController!.value.aspectRatio : 16 / 9,
+        aspectRatio: _videoPlayerController!.value.aspectRatio > 0 
+            ? _videoPlayerController!.value.aspectRatio 
+            : 16 / 9,
         materialProgressColors: ChewieProgressColors(
           playedColor: AppColors.blue,
           handleColor: AppColors.blue,
@@ -46,6 +51,10 @@ class _VideoCardState extends State<VideoCard> {
           bufferedColor: AppColors.surface1,
         ),
         allowFullScreen: true,
+        showOptions: false,
+        customControls: const MaterialControls(
+          showPlayButton: true,
+        ),
       );
       
       if (mounted) {
@@ -58,10 +67,38 @@ class _VideoCardState extends State<VideoCard> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _isPlayerActive = false; // reset on error
+          _isPlayerActive = false; 
         });
       }
     }
+  }
+
+  void _enterPipMode() {
+    if (_videoPlayerController == null) return;
+    
+    // Set the global provider so the AppShell PipWidget knows which controller to use
+    ref.read(pipVideoProvider.notifier).setController(_videoPlayerController);
+
+    // Calculate aspect ratio
+    final width = _videoPlayerController!.value.size.width.toInt();
+    final height = _videoPlayerController!.value.size.height.toInt();
+    
+    int w = width > 0 ? width : 16;
+    int h = height > 0 ? height : 9;
+
+    // Android PiP requires aspect ratio between 1:2.39 and 2.39:1
+    double ratio = w / h;
+    if (ratio > 2.39) {
+      w = 239;
+      h = 100;
+    } else if (ratio < 1/2.39) {
+      w = 100;
+      h = 239;
+    }
+
+    SimplePip().enterPipMode(
+      aspectRatio: (w, h),
+    );
   }
 
   @override
@@ -83,7 +120,20 @@ class _VideoCardState extends State<VideoCard> {
             child: _isPlayerActive
                 ? (_isLoading || _chewieController == null
                     ? const Center(child: CircularProgressIndicator(color: AppColors.blue))
-                    : Chewie(controller: _chewieController!))
+                    : Stack(
+                        children: [
+                          Chewie(controller: _chewieController!),
+                          Positioned(
+                            top: 16,
+                            right: 16,
+                            child: IconButton(
+                              icon: const Icon(Icons.picture_in_picture_alt_rounded, color: Colors.white),
+                              onPressed: _enterPipMode,
+                              tooltip: 'Picture in Picture',
+                            ),
+                          ),
+                        ],
+                      ))
                 : _buildPlaceholder(),
           ),
         ),
@@ -110,8 +160,6 @@ class _VideoCardState extends State<VideoCard> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // If we had a thumbnail URL, we'd put an Image.network here.
-          // For now, a solid surface color works as a clean placeholder.
           Container(color: AppColors.surface0),
           Center(
             child: Container(

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/media/media_provider.dart';
 import '../../data/models/feed_entry.dart';
 import '../../data/repositories/rss_service.dart';
 import '../widgets/feeds_drawer.dart';
@@ -13,23 +15,21 @@ import '../widgets/content_cards/dense_article_tile.dart';
 import '../../data/models/saved_feed_entry.dart';
 import '../../../../core/database/local_db.dart';
 
-class FeedsPage extends StatefulWidget {
+class FeedsPage extends ConsumerStatefulWidget {
   const FeedsPage({super.key});
 
   @override
-  State<FeedsPage> createState() => _FeedsPageState();
+  ConsumerState<FeedsPage> createState() => _FeedsPageState();
 }
 
-class _FeedsPageState extends State<FeedsPage> {
+class _FeedsPageState extends ConsumerState<FeedsPage> {
   final RssService _rssService = RssService();
   List<FeedEntry> _entries = [];
-  Set<String> _hiddenEntryIds =
-      {}; // Local state to hide items removed during this session
+  Set<String> _hiddenEntryIds = {};
   bool _isLoading = true;
   String? _error;
 
-  String _currentFeedUrl =
-      'https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml';
+  String _currentFeedUrl = 'https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml';
 
   @override
   void initState() {
@@ -101,6 +101,7 @@ class _FeedsPageState extends State<FeedsPage> {
           return AudioTile(
             audioUrl: entry.mediaUrl!,
             title: entry.title,
+            author: _currentFeedUrl,
           );
         }
         break;
@@ -124,6 +125,8 @@ class _FeedsPageState extends State<FeedsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isMediaPlaying = ref.watch(mediaStateProvider).mediaItem != null;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -148,15 +151,15 @@ class _FeedsPageState extends State<FeedsPage> {
       ),
       drawer: FeedsDrawer(
         onFeedSelected: (url) {
-          Navigator.pop(context); // Close the drawer
-          _loadFeed(url); // Load the selected feed
+          Navigator.pop(context);
+          _loadFeed(url);
         },
       ),
-      body: _buildBody(),
+      body: _buildBody(isMediaPlaying),
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(bool isMediaPlaying) {
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(color: AppColors.blue),
@@ -200,10 +203,10 @@ class _FeedsPageState extends State<FeedsPage> {
       );
     }
 
-    final visibleEntries =
-        _entries.where((e) => !_hiddenEntryIds.contains(e.id)).toList();
+    final visibleEntries = _entries.where((e) => !_hiddenEntryIds.contains(e.id)).toList();
 
     return ListView.separated(
+      padding: EdgeInsets.only(bottom: isMediaPlaying ? 90.0 : 16.0),
       itemCount: visibleEntries.length,
       separatorBuilder: (context, index) =>
           const Divider(color: AppColors.surface1, height: 1),
