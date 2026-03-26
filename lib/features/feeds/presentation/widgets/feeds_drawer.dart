@@ -5,6 +5,7 @@ import '../../../../core/database/local_db.dart';
 import '../../data/models/local_feed_folder.dart';
 import '../../data/models/local_feed_item.dart';
 import '../pages/saved_feeds_page.dart';
+import '../pages/third_party_servers_page.dart';
 
 class FeedsDrawer extends StatefulWidget {
   final Function(String url) onFeedSelected;
@@ -38,7 +39,7 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
   Future<void> _loadData() async {
     final folders = await localDb.getFolders();
     final feeds = await localDb.getFeeds();
-    
+
     if (mounted) {
       setState(() {
         _folders = folders;
@@ -56,7 +57,7 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
         ..sortOrder = _folders.length;
 
       await localDb.saveFolder(newFolder);
-      
+
       _folderController.clear();
       setState(() {
         _isAddFolderOpen = false;
@@ -83,23 +84,24 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
         ..sortOrder = _feeds.where((f) => f.folderId == null).length;
 
       await localDb.saveFeed(newFeed);
-      
+
       _feedController.clear();
       setState(() {
         _isAddFeedOpen = false;
       });
       _loadData();
-      
+
       widget.onFeedSelected(url);
     }
   }
 
-  Future<void> _updateFeedOrder(LocalFeedItem draggedFeed, LocalFeedItem? targetFeed, int? newFolderId) async {
+  Future<void> _updateFeedOrder(LocalFeedItem draggedFeed,
+      LocalFeedItem? targetFeed, int? newFolderId) async {
     setState(() {
       _feeds.removeWhere((f) => f.id == draggedFeed.id);
-      
+
       draggedFeed.folderId = newFolderId;
-      
+
       if (targetFeed != null) {
         int targetIndex = _feeds.indexWhere((f) => f.id == targetFeed.id);
         if (targetIndex != -1) {
@@ -110,16 +112,18 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
       } else {
         _feeds.add(draggedFeed);
       }
-      
+
       // Update sortOrder for all affected feeds
-      List<LocalFeedItem> feedsInFolder = _feeds.where((f) => f.folderId == newFolderId).toList();
+      List<LocalFeedItem> feedsInFolder =
+          _feeds.where((f) => f.folderId == newFolderId).toList();
       for (int i = 0; i < feedsInFolder.length; i++) {
         feedsInFolder[i].sortOrder = i;
       }
     });
 
     // Save batch to database
-    await localDb.saveFeeds(_feeds.where((f) => f.folderId == newFolderId).toList());
+    await localDb
+        .saveFeeds(_feeds.where((f) => f.folderId == newFolderId).toList());
   }
 
   @override
@@ -136,7 +140,8 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
               child: Row(
                 children: [
                   const Icon(Icons.rss_feed, color: AppColors.blue),
@@ -151,7 +156,6 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                 ],
               ),
             ),
-            
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12.0),
               child: Row(
@@ -180,7 +184,6 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                 ],
               ),
             ),
-
             _buildAnimatedForm(
               isOpen: _isAddFeedOpen,
               hintText: 'https://rss-link.com',
@@ -188,7 +191,6 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
               onAdd: _addNewFeed,
               onCancel: () => setState(() => _isAddFeedOpen = false),
             ),
-
             _buildAnimatedForm(
               isOpen: _isAddFolderOpen,
               hintText: 'Folder Name',
@@ -196,39 +198,66 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
               onAdd: _addNewFolder,
               onCancel: () => setState(() => _isAddFolderOpen = false),
             ),
-
             Expanded(
-              child: _isLoading 
-                ? const Center(child: CircularProgressIndicator(color: AppColors.blue))
-                : DragTarget<LocalFeedItem>(
-                    onWillAcceptWithDetails: (details) => true,
-                    onAcceptWithDetails: (details) {
-                      _updateFeedOrder(details.data, null, null);
-                    },
-                    builder: (context, candidateData, rejectedData) {
-                      return Container(
-                        color: candidateData.isNotEmpty 
-                            ? AppColors.surface0.withOpacity(0.2) 
-                            : Colors.transparent,
-                        child: ListView(
-                          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
-                          children: [
-                            ..._folders.map((folder) => _buildFolderTarget(folder)),
-                            const SizedBox(height: 8),
-                            ..._feeds.where((f) => f.folderId == null).map((feed) => _buildDraggableFeed(feed)),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-            )
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: AppColors.blue))
+                  : DragTarget<LocalFeedItem>(
+                      onWillAcceptWithDetails: (details) => true,
+                      onAcceptWithDetails: (details) {
+                        _updateFeedOrder(details.data, null, null);
+                      },
+                      builder: (context, candidateData, rejectedData) {
+                        return Container(
+                          color: candidateData.isNotEmpty
+                              ? AppColors.surface0.withOpacity(0.2)
+                              : Colors.transparent,
+                          child: ListView(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8.0, vertical: 8.0),
+                            children: [
+                              ..._folders
+                                  .map((folder) => _buildFolderTarget(folder)),
+                              const SizedBox(height: 8),
+                              ..._feeds
+                                  .where((f) => f.folderId == null)
+                                  .map((feed) => _buildDraggableFeed(feed)),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+            const Divider(height: 1, color: AppColors.surface1),
+            ListTile(
+              leading: const Icon(Icons.hub, color: AppColors.blue, size: 20),
+              title: Text(
+                'Third-Party Servers',
+                style: GoogleFonts.manrope(
+                  color: AppColors.text,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const ThirdPartyServersPage()),
+                );
+              },
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildActionButton({required IconData icon, required String label, required VoidCallback onTap}) {
+  Widget _buildActionButton(
+      {required IconData icon,
+      required String label,
+      required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(4),
@@ -290,7 +319,8 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                   filled: true,
                   fillColor: AppColors.base,
                   isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(4),
                     borderSide: const BorderSide(color: AppColors.surface1),
@@ -314,7 +344,9 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                         minimumSize: Size.zero,
                       ),
                       onPressed: onAdd,
-                      child: const Text('ADD', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      child: const Text('ADD',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 12)),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -324,7 +356,8 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                       minimumSize: Size.zero,
                     ),
                     onPressed: onCancel,
-                    child: const Text('CANCEL', style: TextStyle(color: AppColors.text, fontSize: 12)),
+                    child: const Text('CANCEL',
+                        style: TextStyle(color: AppColors.text, fontSize: 12)),
                   ),
                 ],
               ),
@@ -349,16 +382,17 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
       },
       builder: (context, candidateData, rejectedData) {
         final isHovered = candidateData.isNotEmpty;
-        
+
         return Container(
           margin: const EdgeInsets.only(bottom: 2),
           decoration: BoxDecoration(
-            color: isHovered ? AppColors.surface0.withOpacity(0.6) : Colors.transparent,
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(
-              color: isHovered ? AppColors.blue : Colors.transparent,
-            )
-          ),
+              color: isHovered
+                  ? AppColors.surface0.withOpacity(0.6)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: isHovered ? AppColors.blue : Colors.transparent,
+              )),
           child: Theme(
             data: Theme.of(context).copyWith(
               dividerColor: Colors.transparent,
@@ -390,10 +424,12 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
               ),
               iconColor: AppColors.overlay0,
               collapsedIconColor: AppColors.overlay0,
-              children: folderFeeds.map((feed) => Padding(
-                padding: const EdgeInsets.only(left: 12.0),
-                child: _buildDraggableFeed(feed),
-              )).toList(),
+              children: folderFeeds
+                  .map((feed) => Padding(
+                        padding: const EdgeInsets.only(left: 12.0),
+                        child: _buildDraggableFeed(feed),
+                      ))
+                  .toList(),
             ),
           ),
         );
@@ -409,12 +445,13 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
       },
       builder: (context, candidateData, rejectedData) {
         final isHovered = candidateData.isNotEmpty;
-        
+
         return Container(
           decoration: BoxDecoration(
-            border: isHovered 
+            border: isHovered
                 ? const Border(top: BorderSide(color: AppColors.blue, width: 2))
-                : const Border(top: BorderSide(color: Colors.transparent, width: 2)),
+                : const Border(
+                    top: BorderSide(color: Colors.transparent, width: 2)),
           ),
           child: LongPressDraggable<LocalFeedItem>(
             data: feed,
@@ -422,22 +459,28 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
               color: Colors.transparent,
               child: Container(
                 width: 200,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: AppColors.surface0,
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: const [
-                    BoxShadow(color: Colors.black45, blurRadius: 10, offset: Offset(0, 4))
+                    BoxShadow(
+                        color: Colors.black45,
+                        blurRadius: 10,
+                        offset: Offset(0, 4))
                   ],
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.rss_feed, color: AppColors.green, size: 20),
+                    const Icon(Icons.rss_feed,
+                        color: AppColors.green, size: 20),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         feed.name,
-                        style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                            color: AppColors.text, fontWeight: FontWeight.w600),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -470,17 +513,19 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
         itemBuilder: (context) => [
           PopupMenuItem(
             value: 'archive',
-            child: Text('View Archive', style: TextStyle(color: AppColors.text, fontSize: 12)),
+            child: Text('View Archive',
+                style: TextStyle(color: AppColors.text, fontSize: 12)),
           ),
           PopupMenuItem(
             value: 'todo',
-            child: Text('View To-Do', style: TextStyle(color: AppColors.text, fontSize: 12)),
+            child: Text('View To-Do',
+                style: TextStyle(color: AppColors.text, fontSize: 12)),
           ),
         ],
         onSelected: (value) {
           // Close drawer
           Navigator.pop(context);
-          
+
           // Navigate to saved page
           Navigator.push(
             context,

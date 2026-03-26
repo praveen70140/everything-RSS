@@ -3,11 +3,13 @@ import '../../hive_registrar.g.dart';
 import '../../features/feeds/data/models/local_feed_folder.dart';
 import '../../features/feeds/data/models/local_feed_item.dart';
 import '../../features/feeds/data/models/saved_feed_entry.dart';
+import '../../features/feeds/data/models/third_party_server.dart';
 
 class LocalDatabase {
   late Box<LocalFeedFolder> _foldersBox;
   late Box<LocalFeedItem> _feedsBox;
   late Box<SavedFeedEntry> _savedEntriesBox;
+  late Box<ThirdPartyServer> _thirdPartyServersBox;
 
   Future<void> init() async {
     await Hive.initFlutter();
@@ -18,6 +20,8 @@ class LocalDatabase {
     _foldersBox = await Hive.openBox<LocalFeedFolder>('folders');
     _feedsBox = await Hive.openBox<LocalFeedItem>('feeds');
     _savedEntriesBox = await Hive.openBox<SavedFeedEntry>('saved_entries');
+    _thirdPartyServersBox =
+        await Hive.openBox<ThirdPartyServer>('third_party_servers');
 
     // Add default mock data if completely empty
     if (_foldersBox.isEmpty && _feedsBox.isEmpty) {
@@ -141,6 +145,50 @@ class LocalDatabase {
     // We return ALL saved entry IDs regardless of feedUrl so that if an article
     // appears in multiple feeds or slightly different urls, it remains hidden.
     return _savedEntriesBox.values.map((e) => e.entryId).toList();
+  }
+
+  // --- Third Party Servers ---
+
+  Future<List<ThirdPartyServer>> getThirdPartyServers() async {
+    return _thirdPartyServersBox.values.toList();
+  }
+
+  Future<void> saveThirdPartyServer(ThirdPartyServer server) async {
+    if (server.isInBox) {
+      await server.save();
+    } else {
+      await _thirdPartyServersBox.put(server.id, server);
+    }
+  }
+
+  Future<void> deleteThirdPartyServer(String id) async {
+    await _thirdPartyServersBox.delete(id);
+  }
+
+  Future<String> getProxyUrl(String originalUrl) async {
+    try {
+      final uri = Uri.parse(originalUrl);
+      final domain = uri.host;
+      if (domain.isEmpty) return originalUrl;
+
+      final servers = await getThirdPartyServers();
+      for (final server in servers) {
+        for (final supportedDomain in server.supportedDomains) {
+          if (domain == supportedDomain ||
+              domain.endsWith('.$supportedDomain')) {
+            // Found a matching server, construct the proxy URL
+            // Assuming the proxy expects something like: server.url/feed?url=originalUrl
+            final proxyBaseUrl = server.url.endsWith('/')
+                ? server.url.substring(0, server.url.length - 1)
+                : server.url;
+            return '$proxyBaseUrl/feed?url=${Uri.encodeComponent(originalUrl)}';
+          }
+        }
+      }
+    } catch (_) {
+      // If parsing fails, just return original
+    }
+    return originalUrl;
   }
 }
 

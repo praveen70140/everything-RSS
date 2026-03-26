@@ -6,12 +6,14 @@ import 'package:hive_ce/hive_ce.dart';
 import 'package:everything_rss/features/feeds/data/models/local_feed_folder.dart';
 import 'package:everything_rss/features/feeds/data/models/local_feed_item.dart';
 import 'package:everything_rss/features/feeds/data/models/saved_feed_entry.dart';
+import 'package:everything_rss/features/feeds/data/models/third_party_server.dart';
 
 extension HiveRegistrar on HiveInterface {
   void registerAdapters() {
     registerAdapter(LocalFeedFolderAdapter());
     registerAdapter(LocalFeedItemAdapter());
     registerAdapter(SavedFeedEntryAdapter());
+    registerAdapter(ThirdPartyServerAdapter());
   }
 }
 
@@ -20,5 +22,6 @@ extension IsolatedHiveRegistrar on IsolatedHiveInterface {
     registerAdapter(LocalFeedFolderAdapter());
     registerAdapter(LocalFeedItemAdapter());
     registerAdapter(SavedFeedEntryAdapter());
+    registerAdapter(ThirdPartyServerAdapter());
   }
 }
