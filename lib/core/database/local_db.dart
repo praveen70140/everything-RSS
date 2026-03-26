@@ -1,4 +1,5 @@
 import 'package:hive_ce_flutter/hive_flutter.dart';
+import '../../hive_registrar.g.dart';
 import '../../features/feeds/data/models/local_feed_folder.dart';
 import '../../features/feeds/data/models/local_feed_item.dart';
 import '../../features/feeds/data/models/saved_feed_entry.dart';
@@ -10,6 +11,9 @@ class LocalDatabase {
 
   Future<void> init() async {
     await Hive.initFlutter();
+
+    // Register the generated adapters
+    Hive.registerAdapters();
 
     _foldersBox = await Hive.openBox<LocalFeedFolder>('folders');
     _feedsBox = await Hive.openBox<LocalFeedItem>('feeds');
