@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:video_player/video_player.dart';
+import '../database/local_db.dart';
 
-// We'll expose the AudioHandler singleton here. 
+// We'll expose the AudioHandler singleton here.
 // Initialize this before runApp() and override the value in ProviderScope.
 final audioHandlerProvider = Provider<AudioHandler?>((ref) => null);
 
@@ -22,7 +24,8 @@ class MediaState {
   });
 
   bool get isPlaying => playbackState?.playing ?? false;
-  bool get isBuffering => playbackState?.processingState == AudioProcessingState.buffering;
+  bool get isBuffering =>
+      playbackState?.processingState == AudioProcessingState.buffering;
   Duration get duration => mediaItem?.duration ?? Duration.zero;
 
   MediaState copyWith({
@@ -74,8 +77,18 @@ class MediaStateNotifier extends Notifier<MediaState> {
     required String author,
     String? imageUrl,
   }) async {
+    String playUrl = url;
+    final download = await localDb.getDownload(url);
+    if (download != null && download.status == 'completed') {
+      final file = File(download.localPath);
+      if (await file.exists()) {
+        playUrl = file.uri.toString();
+      }
+    }
+
     await _handler.customAction('playUrl', {
-      'url': url,
+      'url': playUrl,
+      'id': url,
       'title': title,
       'author': author,
       'imageUrl': imageUrl ?? '',
@@ -109,6 +122,7 @@ class PipVideoNotifier extends Notifier<VideoPlayerController?> {
   }
 }
 
-final pipVideoProvider = NotifierProvider<PipVideoNotifier, VideoPlayerController?>(() {
+final pipVideoProvider =
+    NotifierProvider<PipVideoNotifier, VideoPlayerController?>(() {
   return PipVideoNotifier();
 });

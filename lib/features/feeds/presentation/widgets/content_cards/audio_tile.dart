@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/media/media_provider.dart';
+import 'download_button.dart';
 
 class AudioTile extends ConsumerWidget {
   final String audioUrl;
@@ -75,6 +76,12 @@ class AudioTile extends ConsumerWidget {
                   ),
                 ],
               ),
+            ),
+            const SizedBox(width: 16),
+            DownloadButton(
+              url: audioUrl,
+              title: title,
+              mediaType: 'audio',
             ),
             const SizedBox(width: 16),
             if (isLoading)

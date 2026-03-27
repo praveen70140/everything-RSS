@@ -3,6 +3,7 @@
 // Check in to version control
 
 import 'package:hive_ce/hive_ce.dart';
+import 'package:everything_rss/features/feeds/data/models/downloaded_media.dart';
 import 'package:everything_rss/features/feeds/data/models/local_feed_folder.dart';
 import 'package:everything_rss/features/feeds/data/models/local_feed_item.dart';
 import 'package:everything_rss/features/feeds/data/models/saved_feed_entry.dart';
@@ -10,6 +11,7 @@ import 'package:everything_rss/features/feeds/data/models/third_party_server.dar
 
 extension HiveRegistrar on HiveInterface {
   void registerAdapters() {
+    registerAdapter(DownloadedMediaAdapter());
     registerAdapter(LocalFeedFolderAdapter());
     registerAdapter(LocalFeedItemAdapter());
     registerAdapter(SavedFeedEntryAdapter());
@@ -19,6 +21,7 @@ extension HiveRegistrar on HiveInterface {
 
 extension IsolatedHiveRegistrar on IsolatedHiveInterface {
   void registerAdapters() {
+    registerAdapter(DownloadedMediaAdapter());
     registerAdapter(LocalFeedFolderAdapter());
     registerAdapter(LocalFeedItemAdapter());
     registerAdapter(SavedFeedEntryAdapter());

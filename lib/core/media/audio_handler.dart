@@ -99,12 +99,13 @@ class AppAudioHandler extends BaseAudioHandler with SeekHandler {
       [Map<String, dynamic>? extras]) async {
     if (name == 'playUrl') {
       final url = extras?['url'] as String;
+      final id = extras?['id'] as String? ?? url;
       final title = extras?['title'] as String;
       final author = extras?['author'] as String;
       final imageUrl = extras?['imageUrl'] as String;
 
       final item = MediaItem(
-        id: url,
+        id: id,
         album: author,
         title: title,
         artUri: (imageUrl.isNotEmpty) ? Uri.parse(imageUrl) : null,

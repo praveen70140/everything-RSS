@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import '../../hive_registrar.g.dart';
 import '../../features/feeds/data/models/local_feed_folder.dart';
 import '../../features/feeds/data/models/local_feed_item.dart';
 import '../../features/feeds/data/models/saved_feed_entry.dart';
 import '../../features/feeds/data/models/third_party_server.dart';
+import '../../features/feeds/data/models/downloaded_media.dart';
 
 class LocalDatabase {
   late Box<LocalFeedFolder> _foldersBox;
@@ -11,6 +13,7 @@ class LocalDatabase {
   late Box<SavedFeedEntry> _savedEntriesBox;
   late Box<ThirdPartyServer> _thirdPartyServersBox;
   late Box<String> _feedXmlCacheBox;
+  late Box<DownloadedMedia> _downloadsBox;
 
   Future<void> init() async {
     await Hive.initFlutter();
@@ -24,6 +27,7 @@ class LocalDatabase {
     _thirdPartyServersBox =
         await Hive.openBox<ThirdPartyServer>('third_party_servers');
     _feedXmlCacheBox = await Hive.openBox<String>('feed_xml_cache');
+    _downloadsBox = await Hive.openBox<DownloadedMedia>('downloads');
 
     // Add default mock data if completely empty
     if (_foldersBox.isEmpty && _feedsBox.isEmpty) {
@@ -201,6 +205,28 @@ class LocalDatabase {
 
   Future<void> saveCachedFeedXml(String url, String xml) async {
     await _feedXmlCacheBox.put(url, xml);
+  }
+
+  // --- Downloads ---
+
+  Future<DownloadedMedia?> getDownload(String url) async {
+    return _downloadsBox.get(url);
+  }
+
+  Future<void> saveDownload(DownloadedMedia media) async {
+    await _downloadsBox.put(media.url, media);
+  }
+
+  Future<void> deleteDownload(String url) async {
+    await _downloadsBox.delete(url);
+  }
+
+  List<DownloadedMedia> getAllDownloads() {
+    return _downloadsBox.values.toList();
+  }
+
+  ValueListenable<Box<DownloadedMedia>> getDownloadsListenable() {
+    return _downloadsBox.listenable();
   }
 }
 
