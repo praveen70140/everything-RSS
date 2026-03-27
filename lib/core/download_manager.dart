@@ -71,7 +71,8 @@ class DownloadManager {
     }
   }
 
-  Future<void> startDownload(String url, String title, String mediaType) async {
+  Future<void> startDownload(String url, String title, String mediaType,
+      {bool requireWiFi = false}) async {
     if (url.isEmpty) return;
 
     final existing = await localDb.getDownload(url);
@@ -95,6 +96,7 @@ class DownloadManager {
       updates: Updates.statusAndProgress,
       retries: 3,
       allowPause: true,
+      requiresWiFi: requireWiFi,
     );
 
     final dir = await getApplicationDocumentsDirectory();

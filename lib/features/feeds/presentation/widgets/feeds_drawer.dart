@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/database/local_db.dart';
 import '../../data/models/local_feed_folder.dart';
 import '../../data/models/local_feed_item.dart';
+import '../../../../core/database/local_db.dart';
 import '../pages/saved_feeds_page.dart';
+import '../pages/feed_settings_page.dart';
 import '../pages/third_party_servers_page.dart';
 
 class FeedsDrawer extends StatefulWidget {
@@ -521,22 +522,36 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
             child: Text('View To-Do',
                 style: TextStyle(color: AppColors.text, fontSize: 12)),
           ),
+          PopupMenuItem(
+            value: 'settings',
+            child: Text('Settings',
+                style: TextStyle(color: AppColors.text, fontSize: 12)),
+          ),
         ],
         onSelected: (value) {
           // Close drawer
           Navigator.pop(context);
 
-          // Navigate to saved page
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => SavedFeedsPage(
-                feedUrl: feed.url,
-                status: value,
-                feedName: feed.name,
+          if (value == 'settings') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => FeedSettingsPage(feed: feed),
               ),
-            ),
-          );
+            );
+          } else {
+            // Navigate to saved page
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => SavedFeedsPage(
+                  feedUrl: feed.url,
+                  status: value,
+                  feedName: feed.name,
+                ),
+              ),
+            );
+          }
         },
       ),
       dense: true,

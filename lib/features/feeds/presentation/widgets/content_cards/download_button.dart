@@ -29,8 +29,8 @@ class DownloadButton extends StatelessWidget {
         if (download == null) {
           return IconButton(
             icon: const Icon(Icons.download, color: AppColors.text),
-            onPressed: () =>
-                downloadManager.startDownload(url, title, mediaType),
+            onPressed: () => downloadManager
+                .startDownload(url, title, mediaType, requireWiFi: false),
             tooltip: 'Download',
           );
         }
@@ -110,7 +110,8 @@ class DownloadButton extends StatelessWidget {
               icon: const Icon(Icons.error_outline, color: AppColors.red),
               onPressed: () {
                 downloadManager.removeDownload(url).then((_) {
-                  downloadManager.startDownload(url, title, mediaType);
+                  downloadManager.startDownload(url, title, mediaType,
+                      requireWiFi: false);
                 });
               },
               tooltip: 'Retry Download',
