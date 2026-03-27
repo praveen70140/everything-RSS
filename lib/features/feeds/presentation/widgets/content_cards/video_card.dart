@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,6 +7,8 @@ import 'package:chewie/chewie.dart';
 import 'package:simple_pip_mode/simple_pip.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/media/media_provider.dart';
+import '../../../../../core/database/local_db.dart';
+import 'download_button.dart';
 
 class VideoCard extends ConsumerStatefulWidget {
   final String videoUrl;
@@ -33,8 +36,19 @@ class _VideoCardState extends ConsumerState<VideoCard> {
       _isPlayerActive = true;
     });
 
-    _videoPlayerController =
-        VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+    final download = await localDb.getDownload(widget.videoUrl);
+    if (download != null && download.status == 'completed') {
+      final file = File(download.localPath);
+      if (await file.exists()) {
+        _videoPlayerController = VideoPlayerController.file(file);
+      } else {
+        _videoPlayerController =
+            VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+      }
+    } else {
+      _videoPlayerController =
+          VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+    }
 
     try {
       await _videoPlayerController!.initialize();
@@ -146,15 +160,28 @@ class _VideoCardState extends ConsumerState<VideoCard> {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
-          child: Text(
-            widget.title,
-            style: GoogleFonts.epilogue(
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              color: AppColors.text,
-              letterSpacing: -1,
-              height: 1.1,
-            ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  widget.title,
+                  style: GoogleFonts.epilogue(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.text,
+                    letterSpacing: -1,
+                    height: 1.1,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              DownloadButton(
+                url: widget.videoUrl,
+                title: widget.title,
+                mediaType: 'video',
+              ),
+            ],
           ),
         ),
       ],

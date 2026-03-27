@@ -8,6 +8,7 @@ import 'core/theme/app_theme.dart';
 import 'core/database/local_db.dart';
 import 'core/media/audio_handler.dart';
 import 'core/media/media_provider.dart';
+import 'core/download_manager.dart';
 import 'features/feeds/presentation/pages/feeds_page.dart';
 import 'features/media/presentation/widgets/mini_player.dart';
 
@@ -16,6 +17,9 @@ void main() async {
 
   // Initialize Isar Local Database
   await localDb.init();
+
+  // Initialize Download Manager
+  await downloadManager.init();
 
   // Initialize Audio Service
   final audioHandler = await initAudioService();
