@@ -21,13 +21,16 @@ class LocalFeedItemAdapter extends TypeAdapter<LocalFeedItem> {
       ..name = fields[1] as String
       ..url = fields[2] as String
       ..folderId = (fields[3] as num?)?.toInt()
-      ..sortOrder = (fields[4] as num).toInt();
+      ..sortOrder = (fields[4] as num).toInt()
+      ..autoDownload = fields[5] == null ? false : fields[5] as bool
+      ..requireWiFi = fields[6] == null ? true : fields[6] as bool
+      ..autoDownloadTime = fields[7] as String?;
   }
 
   @override
   void write(BinaryWriter writer, LocalFeedItem obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -37,7 +40,13 @@ class LocalFeedItemAdapter extends TypeAdapter<LocalFeedItem> {
       ..writeByte(3)
       ..write(obj.folderId)
       ..writeByte(4)
-      ..write(obj.sortOrder);
+      ..write(obj.sortOrder)
+      ..writeByte(5)
+      ..write(obj.autoDownload)
+      ..writeByte(6)
+      ..write(obj.requireWiFi)
+      ..writeByte(7)
+      ..write(obj.autoDownloadTime);
   }
 
   @override

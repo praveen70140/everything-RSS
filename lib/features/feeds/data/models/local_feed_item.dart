@@ -19,4 +19,13 @@ class LocalFeedItem extends HiveObject {
 
   @HiveField(4)
   int sortOrder = 0;
+
+  @HiveField(5, defaultValue: false)
+  bool autoDownload = false;
+
+  @HiveField(6, defaultValue: true)
+  bool requireWiFi = true;
+
+  @HiveField(7, defaultValue: null)
+  String? autoDownloadTime;
 }
