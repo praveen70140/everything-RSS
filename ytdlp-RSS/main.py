@@ -21,27 +21,30 @@ stream_cache: Dict[str, Tuple[str, float]] = {}
 CACHE_DURATION = 1800  # 30 minutes
 
 def run_yt_dlp(args: list) -> dict:
-    """Helper to run yt-dlp and return JSON output."""
-    # Add User-Agent and common flags for better reliability
+    """Helper to run yt-dlp and return JSON output with a 30s timeout."""
     user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     cmd = [
         "yt-dlp",
         "--no-warnings",
         "--no-check-certificates",
         "--user-agent", user_agent,
-        "--geo-bypass"
+        "--geo-bypass",
+        "--no-playlist"
     ] + args
     
     start_time = time.perf_counter()
     try:
-        logger.info(f"Executing yt-dlp with args: {args}")
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        logger.info(f"Executing yt-dlp: {args}")
+        # Added timeout to prevent hanging processes
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=30)
         elapsed = time.perf_counter() - start_time
         logger.info(f"yt-dlp execution took {elapsed:.2f} seconds")
         return json.loads(result.stdout)
+    except subprocess.TimeoutExpired:
+        logger.error("yt-dlp timed out after 30s")
+        raise HTTPException(status_code=504, detail="yt-dlp timed out")
     except subprocess.CalledProcessError as e:
-        elapsed = time.perf_counter() - start_time
-        logger.error(f"yt-dlp failed after {elapsed:.2f}s: {e.stderr}")
+        logger.error(f"yt-dlp failed: {e.stderr}")
         raise HTTPException(status_code=500, detail=f"yt-dlp failed: {e.stderr}")
     except json.JSONDecodeError:
         logger.error("Failed to parse yt-dlp JSON output")
@@ -80,8 +83,13 @@ async def generate_feed(url: str, request: Request):
         url = url.replace("x.com", "twitter.com")
         logger.info(f"Mapped x.com to {url} for better compatibility")
     
+    # YouTube optimization: Target /videos to avoid Shorts/Live playlists
+    if "youtube.com" in url and "@" in url and not url.endswith("/videos"):
+        # Remove trailing slash and add /videos
+        url = url.rstrip("/") + "/videos"
+        logger.info(f"Appended /videos to YouTube channel URL: {url}")
+    
     # 1. Fetch metadata using --flat-playlist for speed
-    # This fetches only the list of entries without visiting every sub-URL
     logger.info(f"Generating feed for: {url}")
     data = run_yt_dlp(["-J", "--flat-playlist", "--playlist-end", "15", url])
     
@@ -162,40 +170,49 @@ async def generate_feed(url: str, request: Request):
     rss_content = fg.rss_str(pretty=True)
     return Response(content=rss_content, media_type="application/rss+xml")
 
-    rss_content = fg.rss_str(pretty=True)
-    return Response(content=rss_content, media_type="application/rss+xml")
-
 @app.get("/stream/{video_id}")
 async def stream_redirect(video_id: str, src: str):
     if not src:
         raise HTTPException(status_code=400, detail="src query parameter is required")
         
-    # Check cache
+    # Check in-memory cache
     now = time.time()
     if src in stream_cache:
         cached_url, expiry = stream_cache[src]
         if now < expiry:
+            logger.info(f"Cache hit for stream: {src}")
             return RedirectResponse(url=cached_url)
 
     # Resolve direct media URL
-    # -g: get direct URL
-    # -f: best mp4 or best overall single file
+    # IMPORTANT: We only fetch the URL. The video is NOT streamed through this server.
     logger.info(f"Resolving direct URL for: {src}")
-    cmd = ["yt-dlp", "-g", "-f", "best[ext=mp4]/best", src]
+    cmd = [
+        "yt-dlp", 
+        "-g", 
+        "-f", "best[ext=mp4]/best", 
+        "--no-warnings",
+        "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        src
+    ]
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        # 30s timeout to resolve the link
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=30)
         direct_url = result.stdout.strip().split('\n')[0]
         
         if not direct_url:
-             raise HTTPException(status_code=500, detail="Could not resolve direct media URL")
+             raise HTTPException(status_code=500, detail="Failed to resolve direct URL")
              
         # Cache for 30 minutes
         stream_cache[src] = (direct_url, now + CACHE_DURATION)
         
+        logger.info(f"Redirecting client to direct media provider: {direct_url[:50]}...")
         return RedirectResponse(url=direct_url)
+    except subprocess.TimeoutExpired:
+        logger.error("Link resolution timed out")
+        raise HTTPException(status_code=504, detail="Link resolution timed out")
     except subprocess.CalledProcessError as e:
-        logger.error(f"yt-dlp resolve failed: {e.stderr}")
-        raise HTTPException(status_code=500, detail=f"Failed to resolve media URL: {e.stderr}")
+        logger.error(f"yt-dlp stream fetch failed: {e.stderr}")
+        raise HTTPException(status_code=500, detail="Failed to resolve media link")
 
 if __name__ == "__main__":
     import uvicorn
