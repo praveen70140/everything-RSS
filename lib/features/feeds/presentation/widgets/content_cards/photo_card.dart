@@ -27,7 +27,7 @@ class PhotoCard extends StatelessWidget {
                 imageUrl,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
-                  return const Center(child: Icon(Icons.error));
+                  return Center(child: Icon(Icons.error));
                 },
               ),
             ),

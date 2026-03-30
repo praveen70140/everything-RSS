@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
 import '../../hive_registrar.g.dart';
 import '../../features/feeds/data/models/local_feed_folder.dart';
 import '../../features/feeds/data/models/local_feed_item.dart';
@@ -15,6 +17,7 @@ class LocalDatabase {
   late Box<String> _feedXmlCacheBox;
   late Box<DownloadedMedia> _downloadsBox;
   late Box<String> _settingsBox;
+  late Box<bool> _readEntriesBox;
 
   Future<void> init() async {
     await Hive.initFlutter();
@@ -30,6 +33,7 @@ class LocalDatabase {
     _feedXmlCacheBox = await Hive.openBox<String>('feed_xml_cache');
     _downloadsBox = await Hive.openBox<DownloadedMedia>('downloads');
     _settingsBox = await Hive.openBox<String>('app_settings');
+    _readEntriesBox = await Hive.openBox<bool>('read_entries');
 
     // Add default mock data if completely empty
     if (_foldersBox.isEmpty && _feedsBox.isEmpty) {
@@ -143,7 +147,10 @@ class LocalDatabase {
   }
 
   Future<List<SavedFeedEntry>> getSavedEntries(
-      String feedUrl, String status) async {
+      String? feedUrl, String status) async {
+    if (feedUrl == null) {
+      return _savedEntriesBox.values.where((e) => e.status == status).toList();
+    }
     return _savedEntriesBox.values
         .where((e) => e.feedUrl == feedUrl && e.status == status)
         .toList();
@@ -202,25 +209,30 @@ class LocalDatabase {
   // --- Feed Cache ---
 
   Future<String?> getCachedFeedXml(String url) async {
-    return _feedXmlCacheBox.get(url);
+    return _feedXmlCacheBox.get(_safeKey(url));
   }
 
   Future<void> saveCachedFeedXml(String url, String xml) async {
-    await _feedXmlCacheBox.put(url, xml);
+    await _feedXmlCacheBox.put(_safeKey(url), xml);
   }
 
   // --- Downloads ---
 
+  String _safeKey(String key) {
+    if (key.length <= 200) return key;
+    return md5.convert(utf8.encode(key)).toString();
+  }
+
   Future<DownloadedMedia?> getDownload(String url) async {
-    return _downloadsBox.get(url);
+    return _downloadsBox.get(_safeKey(url));
   }
 
   Future<void> saveDownload(DownloadedMedia media) async {
-    await _downloadsBox.put(media.url, media);
+    await _downloadsBox.put(_safeKey(media.url), media);
   }
 
   Future<void> deleteDownload(String url) async {
-    await _downloadsBox.delete(url);
+    await _downloadsBox.delete(_safeKey(url));
   }
 
   List<DownloadedMedia> getAllDownloads() {
@@ -233,12 +245,52 @@ class LocalDatabase {
 
   // --- App Settings ---
 
+  bool get isDarkMode {
+    final val = _settingsBox.get('is_dark_mode');
+    return val == null || val == 'true';
+  }
+
+  Future<void> setDarkMode(bool isDark) async {
+    await _settingsBox.put('is_dark_mode', isDark.toString());
+  }
+
   String get mercuryParserUrl {
     return _settingsBox.get('mercury_parser_url') ?? 'http://localhost:3000';
   }
 
   Future<void> setMercuryParserUrl(String url) async {
     await _settingsBox.put('mercury_parser_url', url);
+  }
+
+  double get readerFontSize {
+    final val = _settingsBox.get('reader_font_size');
+    return val != null ? double.tryParse(val) ?? 18.0 : 18.0;
+  }
+
+  Future<void> setReaderFontSize(double size) async {
+    await _settingsBox.put('reader_font_size', size.toString());
+  }
+
+  String get readerFontFamily {
+    return _settingsBox.get('reader_font_family') ?? 'sans-serif';
+  }
+
+  Future<void> setReaderFontFamily(String family) async {
+    await _settingsBox.put('reader_font_family', family);
+  }
+
+  // --- Read Entries ---
+
+  Future<void> markEntryAsRead(String entryId) async {
+    await _readEntriesBox.put(_safeKey(entryId), true);
+  }
+
+  bool isEntryRead(String entryId) {
+    return _readEntriesBox.get(_safeKey(entryId), defaultValue: false) ?? false;
+  }
+
+  Set<String> getAllReadEntryIds() {
+    return _readEntriesBox.keys.cast<String>().toSet();
   }
 }
 

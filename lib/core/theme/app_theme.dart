@@ -3,16 +3,16 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 class AppTheme {
-  static ThemeData get darkTheme {
+  static ThemeData get theme {
     return ThemeData(
       scaffoldBackgroundColor: AppColors.base,
-      brightness: Brightness.dark,
-      appBarTheme: const AppBarTheme(
+      brightness: AppColors.isDarkMode ? Brightness.dark : Brightness.light,
+      appBarTheme: AppBarTheme(
         backgroundColor: AppColors.base,
         elevation: 0,
         iconTheme: IconThemeData(color: AppColors.text),
       ),
-      drawerTheme: const DrawerThemeData(
+      drawerTheme: DrawerThemeData(
         backgroundColor: AppColors.mantle,
         elevation: 0,
       ),

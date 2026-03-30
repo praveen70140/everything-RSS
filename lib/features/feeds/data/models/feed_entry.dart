@@ -7,6 +7,10 @@ class FeedEntry {
   final String link;
   final MediaType mediaType;
   final String? mediaUrl;
+  final String? author;
+  final DateTime? pubDate;
+  String? feedName; // Added to identify feed source in Unified view
+  String? feedUrl; // Added for saving to DB from Unified view
 
   FeedEntry({
     required this.id,
@@ -15,5 +19,9 @@ class FeedEntry {
     required this.link,
     required this.mediaType,
     this.mediaUrl,
+    this.author,
+    this.pubDate,
+    this.feedName,
+    this.feedUrl,
   });
 }

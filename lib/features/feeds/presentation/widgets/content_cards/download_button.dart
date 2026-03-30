@@ -28,7 +28,7 @@ class DownloadButton extends StatelessWidget {
 
         if (download == null) {
           return IconButton(
-            icon: const Icon(Icons.download, color: AppColors.text),
+            icon: Icon(Icons.download, color: AppColors.text),
             onPressed: () => downloadManager
                 .startDownload(url, title, mediaType, requireWiFi: false),
             tooltip: 'Download',
@@ -46,7 +46,7 @@ class DownloadButton extends StatelessWidget {
                 ),
                 IconButton(
                   icon:
-                      const Icon(Icons.pause, size: 16, color: AppColors.text),
+                      Icon(Icons.pause, size: 16, color: AppColors.text),
                   onPressed: () {
                     // background_downloader pause task
                     FileDownloader().taskForId(url).then((task) {
@@ -65,7 +65,7 @@ class DownloadButton extends StatelessWidget {
                   color: AppColors.overlay0,
                 ),
                 IconButton(
-                  icon: const Icon(Icons.play_arrow,
+                  icon: Icon(Icons.play_arrow,
                       size: 16, color: AppColors.text),
                   onPressed: () {
                     FileDownloader().taskForId(url).then((task) {
@@ -77,25 +77,25 @@ class DownloadButton extends StatelessWidget {
             );
           case 'completed':
             return IconButton(
-              icon: const Icon(Icons.offline_pin, color: AppColors.green),
+              icon: Icon(Icons.offline_pin, color: AppColors.green),
               onPressed: () {
                 // Confirm delete
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
-                    title: const Text('Delete Download'),
-                    content: const Text('Remove this downloaded file?'),
+                    title: Text('Delete Download'),
+                    content: Text('Remove this downloaded file?'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
+                        child: Text('Cancel'),
                       ),
                       TextButton(
                         onPressed: () {
                           downloadManager.removeDownload(url);
                           Navigator.pop(context);
                         },
-                        child: const Text('Delete',
+                        child: Text('Delete',
                             style: TextStyle(color: AppColors.red)),
                       ),
                     ],
@@ -107,7 +107,7 @@ class DownloadButton extends StatelessWidget {
           case 'failed':
           default:
             return IconButton(
-              icon: const Icon(Icons.error_outline, color: AppColors.red),
+              icon: Icon(Icons.error_outline, color: AppColors.red),
               onPressed: () {
                 downloadManager.removeDownload(url).then((_) {
                   downloadManager.startDownload(url, title, mediaType,

@@ -20,7 +20,7 @@ class FullScreenPlayer extends ConsumerWidget {
     final mediaState = ref.watch(mediaStateProvider);
     final mediaItem = mediaState.mediaItem;
 
-    if (mediaItem == null) return const SizedBox.shrink();
+    if (mediaItem == null) return SizedBox.shrink();
 
     return Container(
       decoration: BoxDecoration(
@@ -71,7 +71,7 @@ class FullScreenPlayer extends ConsumerWidget {
                                 )
                               : Container(
                                   color: Colors.grey[800],
-                                  child: const Icon(Icons.music_note,
+                                  child: Icon(Icons.music_note,
                                       size: 80, color: Colors.white54),
                                 ),
                         ),
@@ -84,7 +84,7 @@ class FullScreenPlayer extends ConsumerWidget {
                     children: [
                       Text(
                         mediaItem.title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                         ),
@@ -92,7 +92,7 @@ class FullScreenPlayer extends ConsumerWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Text(
                         mediaItem.album ?? '',
                         style: TextStyle(
@@ -168,7 +168,7 @@ class FullScreenPlayer extends ConsumerWidget {
                               .setSpeed(nextSpeed);
                         },
                         child: Text('${mediaState.speed}x',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold)),
@@ -176,7 +176,7 @@ class FullScreenPlayer extends ConsumerWidget {
 
                       // Rewind 15s
                       IconButton(
-                        icon: const Icon(Icons
+                        icon: Icon(Icons
                             .replay_10_rounded), // 15 doesn't exist natively, use replay_10
                         iconSize: 36,
                         onPressed: () =>
@@ -207,7 +207,7 @@ class FullScreenPlayer extends ConsumerWidget {
 
                       // Fast Forward 15s
                       IconButton(
-                        icon: const Icon(Icons
+                        icon: Icon(Icons
                             .forward_10_rounded), // Fast forward equivalent
                         iconSize: 36,
                         onPressed: () =>
@@ -216,14 +216,14 @@ class FullScreenPlayer extends ConsumerWidget {
 
                       // More options / AirPlay placeholder
                       IconButton(
-                        icon: const Icon(Icons.more_horiz_rounded),
+                        icon: Icon(Icons.more_horiz_rounded),
                         iconSize: 28,
                         color: Colors.grey[400],
                         onPressed: () {},
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                 ],
               ),
             ),

@@ -66,7 +66,7 @@ class AudioTile extends ConsumerWidget {
                           isThisAudioPlaying ? AppColors.blue : AppColors.text,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     author,
                     style: GoogleFonts.manrope(
@@ -77,15 +77,15 @@ class AudioTile extends ConsumerWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             DownloadButton(
               url: audioUrl,
               title: title,
               mediaType: 'audio',
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             if (isLoading)
-              const SizedBox(
+              SizedBox(
                 width: 28,
                 height: 28,
                 child: CircularProgressIndicator(
@@ -102,7 +102,7 @@ class AudioTile extends ConsumerWidget {
                 size: 36,
               )
             else
-              const Icon(
+              Icon(
                 Icons.play_circle_outline,
                 color: Colors.grey,
                 size: 36,

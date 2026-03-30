@@ -13,7 +13,7 @@ class MiniPlayer extends ConsumerWidget {
     final mediaState = ref.watch(mediaStateProvider);
     final mediaItem = mediaState.mediaItem;
 
-    if (mediaItem == null) return const SizedBox.shrink();
+    if (mediaItem == null) return SizedBox.shrink();
 
     return GestureDetector(
       onTap: () {
@@ -51,17 +51,17 @@ class MiniPlayer extends ConsumerWidget {
                       height: 48,
                       fit: BoxFit.cover,
                       errorWidget: (context, url, error) =>
-                          const Icon(Icons.music_note, size: 32),
+                          Icon(Icons.music_note, size: 32),
                     )
                   : Container(
                       width: 48,
                       height: 48,
                       color: Colors.grey[800],
                       child:
-                          const Icon(Icons.music_note, color: Colors.white54),
+                          Icon(Icons.music_note, color: Colors.white54),
                     ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -71,11 +71,11 @@ class MiniPlayer extends ConsumerWidget {
                     mediaItem.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                   if (mediaItem.album != null) ...[
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Text(
                       mediaItem.album!,
                       maxLines: 1,
@@ -87,7 +87,7 @@ class MiniPlayer extends ConsumerWidget {
               ),
             ),
             if (mediaState.isBuffering)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.all(12.0),
                 child: SizedBox(
                     width: 24,
@@ -110,7 +110,7 @@ class MiniPlayer extends ConsumerWidget {
                 },
               ),
             IconButton(
-              icon: const Icon(Icons.close_rounded),
+              icon: Icon(Icons.close_rounded),
               onPressed: () => ref.read(mediaStateProvider.notifier).stop(),
             ),
           ],

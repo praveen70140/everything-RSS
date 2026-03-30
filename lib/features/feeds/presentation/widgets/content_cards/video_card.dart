@@ -137,7 +137,7 @@ class _VideoCardState extends ConsumerState<VideoCard> {
             color: AppColors.crust,
             child: _isPlayerActive
                 ? (_isLoading || _chewieController == null
-                    ? const Center(
+                    ? Center(
                         child: CircularProgressIndicator(color: AppColors.blue))
                     : Stack(
                         children: [
@@ -146,7 +146,7 @@ class _VideoCardState extends ConsumerState<VideoCard> {
                             top: 16,
                             right: 16,
                             child: IconButton(
-                              icon: const Icon(
+                              icon: Icon(
                                   Icons.picture_in_picture_alt_rounded,
                                   color: Colors.white),
                               onPressed: _enterPipMode,
@@ -175,7 +175,7 @@ class _VideoCardState extends ConsumerState<VideoCard> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               DownloadButton(
                 url: widget.videoUrl,
                 title: widget.title,
@@ -210,7 +210,7 @@ class _VideoCardState extends ConsumerState<VideoCard> {
                   )
                 ],
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.play_arrow,
                 color: AppColors.base,
                 size: 36,
@@ -226,7 +226,7 @@ class _VideoCardState extends ConsumerState<VideoCard> {
                 color: Colors.black54,
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: const Text(
+              child: Text(
                 'TAP TO LOAD VIDEO',
                 style: TextStyle(
                     color: Colors.white,

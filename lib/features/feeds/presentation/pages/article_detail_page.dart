@@ -4,26 +4,59 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import 'package:share_plus/share_plus.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/database/local_db.dart';
 import '../../data/models/feed_entry.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ArticleDetailPage extends StatefulWidget {
-  final FeedEntry entry;
+  final List<FeedEntry> entries;
+  final int initialIndex;
 
-  const ArticleDetailPage({super.key, required this.entry});
+  const ArticleDetailPage({
+    super.key,
+    required this.entries,
+    required this.initialIndex,
+  });
 
   @override
   State<ArticleDetailPage> createState() => _ArticleDetailPageState();
 }
 
 class _ArticleDetailPageState extends State<ArticleDetailPage> {
+  late PageController _pageController;
+  late int _currentIndex;
   bool _isReaderMode = false;
   bool _isLoadingReaderMode = false;
   String? _readerModeContent;
   String? _readerModeError;
   String? _selectedText;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  FeedEntry get currentEntry => widget.entries[_currentIndex];
+
+  void _onPageChanged(int index) {
+    setState(() {
+      _currentIndex = index;
+      _isReaderMode = false;
+      _isLoadingReaderMode = false;
+      _readerModeContent = null;
+      _readerModeError = null;
+    });
+  }
 
   Future<void> _fetchReaderMode() async {
     if (_readerModeContent != null) {
@@ -44,7 +77,7 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
           ? baseUrl.substring(0, baseUrl.length - 1)
           : baseUrl;
       final url = Uri.parse(
-          '$cleanBaseUrl/parser?url=${Uri.encodeComponent(widget.entry.link)}');
+          '$cleanBaseUrl/parser?url=${Uri.encodeComponent(currentEntry.link)}');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -93,6 +126,104 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
     }
   }
 
+  void _showTypographyBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.crust,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            final double currentSize = localDb.readerFontSize;
+            final String currentFont = localDb.readerFontFamily;
+
+            return Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Typography & Accessibility',
+                    style: GoogleFonts.epilogue(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.text,
+                    ),
+                  ),
+                  SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Font Size',
+                        style: TextStyle(color: AppColors.subtext1),
+                      ),
+                      Text(
+                        currentSize.toInt().toString(),
+                        style: TextStyle(
+                            color: AppColors.text, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  Slider(
+                    value: currentSize,
+                    min: 14.0,
+                    max: 32.0,
+                    divisions: 18,
+                    activeColor: AppColors.blue,
+                    inactiveColor: AppColors.surface1,
+                    onChanged: (double value) {
+                      localDb.setReaderFontSize(value);
+                      setModalState(() {});
+                      setState(() {});
+                    },
+                  ),
+                  SizedBox(height: 24),
+                  Text(
+                    'Font Family',
+                    style: TextStyle(color: AppColors.subtext1),
+                  ),
+                  SizedBox(height: 8),
+                  DropdownButton<String>(
+                    value: currentFont,
+                    isExpanded: true,
+                    dropdownColor: AppColors.surface0,
+                    style: TextStyle(color: AppColors.text),
+                    underline: Container(
+                      height: 1,
+                      color: AppColors.surface1,
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'sans-serif',
+                          child: Text('Sans-Serif (Manrope)')),
+                      DropdownMenuItem(
+                          value: 'serif', child: Text('Serif (Lora)')),
+                      DropdownMenuItem(
+                          value: 'monospace',
+                          child: Text('Monospace (Fira Code)')),
+                    ],
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        localDb.setReaderFontFamily(newValue);
+                        setModalState(() {});
+                        setState(() {});
+                      }
+                    },
+                  ),
+                  SizedBox(height: 24),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -100,13 +231,18 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
       appBar: AppBar(
         backgroundColor: AppColors.crust,
         title: Text(
-          widget.entry.title,
+          currentEntry.author ?? 'Article',
           style: GoogleFonts.manrope(
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
         ),
         actions: [
+          IconButton(
+            icon: Icon(Icons.text_fields),
+            tooltip: 'Typography Settings',
+            onPressed: _showTypographyBottomSheet,
+          ),
           IconButton(
             icon: Icon(
               _isReaderMode ? Icons.article : Icons.article_outlined,
@@ -124,64 +260,96 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.open_in_browser),
+            icon: Icon(Icons.share),
+            tooltip: 'Share',
+            onPressed: () {
+              Share.share('${currentEntry.title}\n${currentEntry.link}');
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.open_in_browser),
             tooltip: 'Open in Browser',
             onPressed: () async {
-              final url = Uri.parse(widget.entry.link);
+              final url = Uri.parse(currentEntry.link);
               if (await canLaunchUrl(url)) {
                 await launchUrl(url, mode: LaunchMode.externalApplication);
               } else {
                 try {
                   await launchUrl(url, mode: LaunchMode.externalApplication);
                 } catch (e) {
-                  debugPrint('Could not launch ${widget.entry.link}');
+                  debugPrint('Could not launch ${currentEntry.link}');
                 }
               }
             },
           )
         ],
       ),
-      body: SelectionArea(
-        onSelectionChanged: (SelectedContent? content) {
-          _selectedText = content?.plainText;
-        },
-        contextMenuBuilder: (context, selectableRegionState) {
-          final List<ContextMenuButtonItem> buttonItems = [
-            ...selectableRegionState.contextMenuButtonItems,
-            ContextMenuButtonItem(
-              onPressed: () {
-                selectableRegionState.hideToolbar();
-                _handleDefine();
-              },
-              label: 'Define',
-            ),
-            ContextMenuButtonItem(
-              onPressed: () {
-                selectableRegionState.hideToolbar();
-                _handleTranslate();
-              },
-              label: 'Translate',
-            ),
-          ];
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.entries.length,
+        onPageChanged: _onPageChanged,
+        itemBuilder: (context, index) {
+          final entry = widget.entries[index];
+          return SelectionArea(
+            onSelectionChanged: (SelectedContent? content) {
+              _selectedText = content?.plainText;
+            },
+            contextMenuBuilder: (context, selectableRegionState) {
+              final List<ContextMenuButtonItem> buttonItems = [
+                ...selectableRegionState.contextMenuButtonItems,
+                ContextMenuButtonItem(
+                  onPressed: () {
+                    selectableRegionState.hideToolbar();
+                    _handleDefine();
+                  },
+                  label: 'Define',
+                ),
+                ContextMenuButtonItem(
+                  onPressed: () {
+                    selectableRegionState.hideToolbar();
+                    _handleTranslate();
+                  },
+                  label: 'Translate',
+                ),
+              ];
 
-          return AdaptiveTextSelectionToolbar.buttonItems(
-            anchors: selectableRegionState.contextMenuAnchors,
-            buttonItems: buttonItems,
+              return AdaptiveTextSelectionToolbar.buttonItems(
+                anchors: selectableRegionState.contextMenuAnchors,
+                buttonItems: buttonItems,
+              );
+            },
+            child: _buildBody(entry),
           );
         },
-        child: _buildBody(),
       ),
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(FeedEntry entry) {
+    final fontSize = localDb.readerFontSize;
+    final fontFamilyOption = localDb.readerFontFamily;
+
+    String? currentFontFamily;
+    switch (fontFamilyOption) {
+      case 'serif':
+        currentFontFamily = GoogleFonts.lora().fontFamily;
+        break;
+      case 'monospace':
+        currentFontFamily = GoogleFonts.firaCode().fontFamily;
+        break;
+      case 'sans-serif':
+      default:
+        currentFontFamily = GoogleFonts.manrope().fontFamily;
+        break;
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            widget.entry.title,
+            entry.title,
             style: GoogleFonts.epilogue(
               fontSize: 32,
               fontWeight: FontWeight.w900,
@@ -189,11 +357,11 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
               letterSpacing: -1,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Divider(color: AppColors.surface1),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           if (_isLoadingReaderMode)
-            const Center(
+            Center(
               child: Padding(
                 padding: EdgeInsets.symmetric(vertical: 32.0),
                 child: CircularProgressIndicator(color: AppColors.blue),
@@ -206,9 +374,9 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.error_outline,
+                    Icon(Icons.error_outline,
                         color: AppColors.red, size: 48),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     Text(
                       'Reader Mode Error',
                       style: GoogleFonts.epilogue(
@@ -217,13 +385,13 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
                         color: AppColors.text,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text(
                       _readerModeError!,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.subtext1),
+                      style: TextStyle(color: AppColors.subtext1),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () {
                         setState(() {
@@ -231,7 +399,7 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
                           _readerModeError = null;
                         });
                       },
-                      child: const Text('Back to Normal View'),
+                      child: Text('Back to Normal View'),
                     )
                   ],
                 ),
@@ -247,8 +415,8 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline, color: AppColors.subtext1),
-                    const SizedBox(width: 12),
+                    Icon(Icons.info_outline, color: AppColors.subtext1),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         'Showing RSS summary. Tap the article icon above to fetch the full text.',
@@ -261,12 +429,10 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
             ],
             Html(
-              data: _isReaderMode
-                  ? (_readerModeContent ?? '')
-                  : widget.entry.subtitle,
+              data: _isReaderMode ? (_readerModeContent ?? '') : entry.subtitle,
               extensions: [
                 ImageExtension(
                   handleAssetImages: false,
@@ -274,19 +440,19 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
                   handleNetworkImages: true,
                   builder: (extensionContext) {
                     final src = extensionContext.attributes['src'];
-                    if (src == null) return const SizedBox.shrink();
+                    if (src == null) return SizedBox.shrink();
                     return Image.network(
                       src,
                       errorBuilder: (context, error, stackTrace) =>
-                          const SizedBox.shrink(),
+                          SizedBox.shrink(),
                     );
                   },
                 ),
               ],
               style: {
                 "body": Style(
-                  fontFamily: GoogleFonts.manrope().fontFamily,
-                  fontSize: FontSize(18.0),
+                  fontFamily: currentFontFamily,
+                  fontSize: FontSize(fontSize),
                   color: AppColors.text,
                   lineHeight: LineHeight(1.8),
                   margin: Margins.zero,
@@ -294,7 +460,7 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
                 ),
                 "p": Style(
                   margin: Margins.only(bottom: 24.0),
-                  fontSize: FontSize(18.0),
+                  fontSize: FontSize(fontSize),
                   lineHeight: LineHeight(1.8),
                 ),
                 "a": Style(
@@ -388,7 +554,7 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
               },
             ),
           ],
-          const SizedBox(height: 48),
+          SizedBox(height: 48),
         ],
       ),
     );

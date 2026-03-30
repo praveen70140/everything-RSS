@@ -11,13 +11,13 @@ import '../widgets/content_cards/audio_tile.dart';
 import '../widgets/content_cards/dense_article_tile.dart';
 
 class SavedFeedsPage extends StatefulWidget {
-  final String feedUrl;
+  final String? feedUrl;
   final String status; // 'archive' or 'todo'
   final String feedName;
 
   const SavedFeedsPage({
     super.key,
-    required this.feedUrl,
+    this.feedUrl,
     required this.status,
     required this.feedName,
   });
@@ -37,7 +37,8 @@ class _SavedFeedsPageState extends State<SavedFeedsPage> {
   }
 
   Future<void> _loadEntries() async {
-    final entries = await localDb.getSavedEntries(widget.feedUrl, widget.status);
+    final entries =
+        await localDb.getSavedEntries(widget.feedUrl, widget.status);
     if (mounted) {
       setState(() {
         _entries = entries;
@@ -85,7 +86,8 @@ class _SavedFeedsPageState extends State<SavedFeedsPage> {
       case MediaType.text:
       default:
         if (isDense) {
-          child = DenseArticleTile(title: entry.title, subtitle: entry.subtitle);
+          child =
+              DenseArticleTile(title: entry.title, subtitle: entry.subtitle);
         } else {
           child = ArticleTile(title: entry.title, subtitle: entry.subtitle);
         }
@@ -100,13 +102,13 @@ class _SavedFeedsPageState extends State<SavedFeedsPage> {
         color: AppColors.red,
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: const Icon(Icons.delete, color: Colors.white),
+        child: Icon(Icons.delete, color: Colors.white),
       ),
       secondaryBackground: Container(
         color: AppColors.red,
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: const Icon(Icons.delete, color: Colors.white),
+        child: Icon(Icons.delete, color: Colors.white),
       ),
       child: child,
     );
@@ -137,13 +139,13 @@ class _SavedFeedsPageState extends State<SavedFeedsPage> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: CircularProgressIndicator(color: AppColors.blue),
       );
     }
 
     if (_entries.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           'No saved items here.',
           style: TextStyle(color: AppColors.subtext1, fontSize: 16),
@@ -153,7 +155,8 @@ class _SavedFeedsPageState extends State<SavedFeedsPage> {
 
     return ListView.separated(
       itemCount: _entries.length,
-      separatorBuilder: (context, index) => const Divider(color: AppColors.surface1, height: 1),
+      separatorBuilder: (context, index) =>
+          Divider(color: AppColors.surface1, height: 1),
       itemBuilder: (context, index) {
         final entry = _entries[index];
         final isDense = index > 5 && entry.mediaType == 'MediaType.text';

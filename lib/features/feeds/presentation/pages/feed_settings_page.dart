@@ -16,6 +16,7 @@ class _FeedSettingsPageState extends State<FeedSettingsPage> {
   late bool autoDownload;
   late bool requireWiFi;
   late String? autoDownloadTime;
+  late TextEditingController _nameController;
 
   @override
   void initState() {
@@ -23,9 +24,19 @@ class _FeedSettingsPageState extends State<FeedSettingsPage> {
     autoDownload = widget.feed.autoDownload;
     requireWiFi = widget.feed.requireWiFi;
     autoDownloadTime = widget.feed.autoDownloadTime;
+    _nameController = TextEditingController(text: widget.feed.name);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
   }
 
   Future<void> _saveSettings() async {
+    widget.feed.name = _nameController.text.trim().isNotEmpty
+        ? _nameController.text.trim()
+        : widget.feed.name;
     widget.feed.autoDownload = autoDownload;
     widget.feed.requireWiFi = requireWiFi;
     widget.feed.autoDownloadTime = autoDownloadTime;
@@ -66,16 +77,40 @@ class _FeedSettingsPageState extends State<FeedSettingsPage> {
       appBar: AppBar(
         title: Text('${widget.feed.name} Settings'),
         backgroundColor: AppColors.mantle,
-        iconTheme: const IconThemeData(color: AppColors.text),
-        titleTextStyle: const TextStyle(color: AppColors.text, fontSize: 20),
+        iconTheme: IconThemeData(color: AppColors.text),
+        titleTextStyle: TextStyle(color: AppColors.text, fontSize: 20),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          TextField(
+            controller: _nameController,
+            style: TextStyle(color: AppColors.text),
+            decoration: InputDecoration(
+              labelText: 'Feed Name',
+              labelStyle: TextStyle(color: AppColors.overlay0),
+              filled: true,
+              fillColor: AppColors.crust,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: AppColors.surface1),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: AppColors.surface1),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: AppColors.blue),
+              ),
+            ),
+            onSubmitted: (_) => _saveSettings(),
+          ),
+          SizedBox(height: 24),
           SwitchListTile(
-            title: const Text('Auto-Download Media',
+            title: Text('Auto-Download Media',
                 style: TextStyle(color: AppColors.text)),
-            subtitle: const Text(
+            subtitle: Text(
                 'Automatically download video and audio for new feed items',
                 style: TextStyle(color: AppColors.subtext1)),
             value: autoDownload,
@@ -87,9 +122,9 @@ class _FeedSettingsPageState extends State<FeedSettingsPage> {
           ),
           if (autoDownload) ...[
             SwitchListTile(
-              title: const Text('Require Wi-Fi',
+              title: Text('Require Wi-Fi',
                   style: TextStyle(color: AppColors.text)),
-              subtitle: const Text(
+              subtitle: Text(
                   'Only download when connected to a Wi-Fi network',
                   style: TextStyle(color: AppColors.subtext1)),
               value: requireWiFi,
@@ -100,13 +135,13 @@ class _FeedSettingsPageState extends State<FeedSettingsPage> {
               activeColor: AppColors.green,
             ),
             ListTile(
-              title: const Text('Scheduled Time',
+              title: Text('Scheduled Time',
                   style: TextStyle(color: AppColors.text)),
               subtitle: Text(
                   autoDownloadTime != null ? autoDownloadTime! : 'Not set',
-                  style: const TextStyle(color: AppColors.subtext1)),
+                  style: TextStyle(color: AppColors.subtext1)),
               trailing:
-                  const Icon(Icons.access_time, color: AppColors.overlay0),
+                  Icon(Icons.access_time, color: AppColors.overlay0),
               onTap: _pickTime,
             ),
           ],

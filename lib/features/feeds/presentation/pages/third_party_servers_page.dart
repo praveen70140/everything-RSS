@@ -119,7 +119,7 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
                   hintText: 'My RSS Proxy',
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               TextField(
                 controller: urlController,
                 decoration: const InputDecoration(
@@ -133,7 +133,7 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () {
@@ -141,7 +141,7 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
                 _addOrUpdateServer(urlController.text, nameController.text,
                     existingServer: server);
               },
-              child: const Text('Save'),
+              child: Text('Save'),
             ),
           ],
         );
@@ -167,9 +167,9 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : _servers.isEmpty
-              ? const Center(child: Text('No third-party servers added yet.'))
+              ? Center(child: Text('No third-party servers added yet.'))
               : ListView.builder(
                   itemCount: _servers.length,
                   itemBuilder: (context, index) {
@@ -183,14 +183,14 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.refresh),
+                            icon: Icon(Icons.refresh),
                             tooltip: 'Refresh links.txt',
                             onPressed: () => _addOrUpdateServer(
                                 server.url, server.name,
                                 existingServer: server),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
+                            icon: Icon(Icons.delete, color: Colors.red),
                             onPressed: () => _deleteServer(server),
                           ),
                         ],
@@ -201,7 +201,7 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
                 ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddServerDialog(),
-        child: const Icon(Icons.add),
+        child: Icon(Icons.add),
         tooltip: 'Add Server',
       ),
     );

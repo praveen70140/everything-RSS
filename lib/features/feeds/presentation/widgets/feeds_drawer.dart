@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/database/local_db.dart';
 import '../../data/models/local_feed_folder.dart';
 import '../../data/models/local_feed_item.dart';
-import '../../../../core/database/local_db.dart';
-import '../pages/saved_feeds_page.dart';
+import '../pages/app_settings_page.dart';
 import '../pages/feed_settings_page.dart';
+import '../pages/saved_feeds_page.dart';
 import '../pages/third_party_servers_page.dart';
 import '../pages/app_settings_page.dart';
 
 class FeedsDrawer extends StatefulWidget {
-  final Function(String url) onFeedSelected;
+  final Function(String? url, {String? feedName}) onFeedSelected;
 
   const FeedsDrawer({
     super.key,
@@ -146,8 +147,8 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                   const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
               child: Row(
                 children: [
-                  const Icon(Icons.rss_feed, color: AppColors.blue),
-                  const SizedBox(width: 8),
+                  Icon(Icons.rss_feed, color: AppColors.blue),
+                  SizedBox(width: 8),
                   Text(
                     'FEEDS',
                     style: GoogleFonts.epilogue(
@@ -158,6 +159,49 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                 ],
               ),
             ),
+            ListTile(
+              leading: Icon(Icons.all_inbox, color: AppColors.text),
+              title: Text('All Feeds',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              onTap: () => widget.onFeedSelected(null, feedName: 'ALL FEEDS'),
+            ),
+            ListTile(
+              leading: Icon(Icons.watch_later_outlined,
+                  color: AppColors.green),
+              title: Text('To do',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              onTap: () {
+                Navigator.pop(context); // Close drawer
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SavedFeedsPage(
+                      status: 'todo',
+                      feedName: 'All Read Later',
+                    ),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading:
+                  Icon(Icons.archive_outlined, color: AppColors.mauve),
+              title: Text('Archive',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              onTap: () {
+                Navigator.pop(context); // Close drawer
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SavedFeedsPage(
+                      status: 'archive',
+                      feedName: 'All Archived',
+                    ),
+                  ),
+                );
+              },
+            ),
+            Divider(color: AppColors.surface1),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12.0),
               child: Row(
@@ -172,7 +216,7 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                       }),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: _buildActionButton(
                       icon: Icons.create_new_folder,
@@ -202,7 +246,7 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
             ),
             Expanded(
               child: _isLoading
-                  ? const Center(
+                  ? Center(
                       child: CircularProgressIndicator(color: AppColors.blue))
                   : DragTarget<LocalFeedItem>(
                       onWillAcceptWithDetails: (details) => true,
@@ -220,7 +264,7 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                             children: [
                               ..._folders
                                   .map((folder) => _buildFolderTarget(folder)),
-                              const SizedBox(height: 8),
+                              SizedBox(height: 8),
                               ..._feeds
                                   .where((f) => f.folderId == null)
                                   .map((feed) => _buildDraggableFeed(feed)),
@@ -230,9 +274,9 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                       },
                     ),
             ),
-            const Divider(height: 1, color: AppColors.surface1),
+            Divider(height: 1, color: AppColors.surface1),
             ListTile(
-              leading: const Icon(Icons.hub, color: AppColors.blue, size: 20),
+              leading: Icon(Icons.hub, color: AppColors.blue, size: 20),
               title: Text(
                 'Third-Party Servers',
                 style: GoogleFonts.manrope(
@@ -252,7 +296,7 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
             ),
             ListTile(
               leading:
-                  const Icon(Icons.settings, color: AppColors.blue, size: 20),
+                  Icon(Icons.settings, color: AppColors.blue, size: 20),
               title: Text(
                 'App Settings',
                 style: GoogleFonts.manrope(
@@ -293,7 +337,7 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, color: AppColors.blue, size: 16),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             Text(
               label,
               style: GoogleFonts.manrope(
@@ -334,10 +378,10 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
             children: [
               TextField(
                 controller: controller,
-                style: const TextStyle(fontSize: 14),
+                style: TextStyle(fontSize: 14),
                 decoration: InputDecoration(
                   hintText: hintText,
-                  hintStyle: const TextStyle(color: AppColors.overlay0),
+                  hintStyle: TextStyle(color: AppColors.overlay0),
                   filled: true,
                   fillColor: AppColors.base,
                   isDense: true,
@@ -345,16 +389,16 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(4),
-                    borderSide: const BorderSide(color: AppColors.surface1),
+                    borderSide: BorderSide(color: AppColors.surface1),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(4),
-                    borderSide: const BorderSide(color: AppColors.blue),
+                    borderSide: BorderSide(color: AppColors.blue),
                   ),
                 ),
                 onSubmitted: (_) => onAdd(),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
@@ -366,19 +410,19 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                         minimumSize: Size.zero,
                       ),
                       onPressed: onAdd,
-                      child: const Text('ADD',
+                      child: Text('ADD',
                           style: TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 12)),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   TextButton(
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       minimumSize: Size.zero,
                     ),
                     onPressed: onCancel,
-                    child: const Text('CANCEL',
+                    child: Text('CANCEL',
                         style: TextStyle(color: AppColors.text, fontSize: 12)),
                   ),
                 ],
@@ -430,14 +474,14 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                 localDb.saveFolder(folder);
               },
               tilePadding: const EdgeInsets.symmetric(horizontal: 4),
-              trailing: const SizedBox.shrink(),
+              trailing: SizedBox.shrink(),
               leading: Icon(
                 folder.isExpanded ? Icons.folder_open : Icons.folder,
                 color: isHovered ? AppColors.blue : AppColors.mauve,
               ),
               title: Text(
                 folder.name,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.text,
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -471,8 +515,8 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
         return Container(
           decoration: BoxDecoration(
             border: isHovered
-                ? const Border(top: BorderSide(color: AppColors.blue, width: 2))
-                : const Border(
+                ? Border(top: BorderSide(color: AppColors.blue, width: 2))
+                : Border(
                     top: BorderSide(color: Colors.transparent, width: 2)),
           ),
           child: LongPressDraggable<LocalFeedItem>(
@@ -495,13 +539,13 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.rss_feed,
+                    Icon(Icons.rss_feed,
                         color: AppColors.green, size: 20),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         feed.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: AppColors.text, fontWeight: FontWeight.w600),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -524,13 +568,13 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
   Widget _buildFeedTile(LocalFeedItem feed) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-      leading: const Icon(Icons.rss_feed, color: AppColors.green, size: 20),
+      leading: Icon(Icons.rss_feed, color: AppColors.green, size: 20),
       title: Text(
         feed.name,
-        style: const TextStyle(color: AppColors.subtext1, fontSize: 14),
+        style: TextStyle(color: AppColors.subtext1, fontSize: 14),
       ),
       trailing: PopupMenuButton<String>(
-        icon: const Icon(Icons.more_vert, color: AppColors.overlay0, size: 18),
+        icon: Icon(Icons.more_vert, color: AppColors.overlay0, size: 18),
         color: AppColors.surface1,
         itemBuilder: (context) => [
           PopupMenuItem(
@@ -577,7 +621,7 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
       ),
       dense: true,
       visualDensity: VisualDensity.compact,
-      onTap: () => widget.onFeedSelected(feed.url),
+      onTap: () => widget.onFeedSelected(feed.url, feedName: feed.name),
     );
   }
 }

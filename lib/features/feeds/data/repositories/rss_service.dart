@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:xml/xml.dart';
 import '../models/feed_entry.dart';
@@ -6,13 +7,18 @@ import '../../../../core/database/local_db.dart';
 
 class RssService {
   Future<List<FeedEntry>> fetchFeed(String url,
-      {bool forceRefresh = false}) async {
+      {bool forceRefresh = false,
+      String? feedName,
+      String? originalUrl}) async {
     try {
       String xmlString = '';
       bool fromCache = false;
 
+      // Use the original URL for caching if provided (since the proxy url might change or be irrelevant for cache keys)
+      final cacheKey = originalUrl ?? url;
+
       if (!forceRefresh) {
-        final cached = await localDb.getCachedFeedXml(url);
+        final cached = await localDb.getCachedFeedXml(cacheKey);
         if (cached != null && cached.isNotEmpty) {
           xmlString = cached;
           fromCache = true;
@@ -30,20 +36,17 @@ class RssService {
         );
 
         if (response.statusCode == 200) {
-          // Decode body handling potential encoding issues and File/Byte streams
           try {
             xmlString = utf8.decode(response.bodyBytes, allowMalformed: true);
           } catch (_) {
-            // Fallback if utf8 fails completely
             xmlString = String.fromCharCodes(response.bodyBytes);
           }
 
-          // Clean up BOM (Byte Order Mark) if present (common in file-served XML)
           if (xmlString.startsWith('\ufeff')) {
             xmlString = xmlString.substring(1);
           }
 
-          await localDb.saveCachedFeedXml(url, xmlString);
+          await localDb.saveCachedFeedXml(cacheKey, xmlString);
         } else {
           throw Exception(
               'Failed to load RSS feed (Status: ${response.statusCode})');
@@ -60,6 +63,22 @@ class RssService {
           final title = _getElementText(item, 'title') ?? 'No Title';
           final link = _getElementText(item, 'link') ?? '';
           String description = _getElementText(item, 'description') ?? '';
+
+          String? author = _getElementText(item, 'dc:creator') ??
+              _getElementText(item, 'author');
+
+          DateTime? pubDate;
+          final pubDateStr = _getElementText(item, 'pubDate');
+          if (pubDateStr != null && pubDateStr.isNotEmpty) {
+            try {
+              pubDate = HttpDate.parse(pubDateStr);
+            } catch (_) {
+              try {
+                // Fallback for atom format or other formats
+                pubDate = DateTime.parse(pubDateStr);
+              } catch (_) {}
+            }
+          }
 
           // Clean up HTML tags from description for a clean subtitle
           description = description.replaceAll(RegExp(r'<[^>]*>'), '').trim();
@@ -130,6 +149,10 @@ class RssService {
             link: link,
             mediaType: mediaType,
             mediaUrl: mediaUrl,
+            author: author,
+            pubDate: pubDate,
+            feedName: feedName,
+            feedUrl: originalUrl ?? url,
           ));
         }
 
