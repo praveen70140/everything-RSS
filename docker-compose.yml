@@ -1,0 +1,9 @@
+version: '3'
+services:
+  mercury-parser:
+    image: wangqiru/mercury-parser-api
+    ports:
+      - "3000:3000"
+    restart: always
+    environment:
+      - PORT=3000

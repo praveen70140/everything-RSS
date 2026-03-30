@@ -14,6 +14,7 @@ class LocalDatabase {
   late Box<ThirdPartyServer> _thirdPartyServersBox;
   late Box<String> _feedXmlCacheBox;
   late Box<DownloadedMedia> _downloadsBox;
+  late Box<String> _settingsBox;
 
   Future<void> init() async {
     await Hive.initFlutter();
@@ -28,6 +29,7 @@ class LocalDatabase {
         await Hive.openBox<ThirdPartyServer>('third_party_servers');
     _feedXmlCacheBox = await Hive.openBox<String>('feed_xml_cache');
     _downloadsBox = await Hive.openBox<DownloadedMedia>('downloads');
+    _settingsBox = await Hive.openBox<String>('app_settings');
 
     // Add default mock data if completely empty
     if (_foldersBox.isEmpty && _feedsBox.isEmpty) {
@@ -227,6 +229,16 @@ class LocalDatabase {
 
   ValueListenable<Box<DownloadedMedia>> getDownloadsListenable() {
     return _downloadsBox.listenable();
+  }
+
+  // --- App Settings ---
+
+  String get mercuryParserUrl {
+    return _settingsBox.get('mercury_parser_url') ?? 'http://localhost:3000';
+  }
+
+  Future<void> setMercuryParserUrl(String url) async {
+    await _settingsBox.put('mercury_parser_url', url);
   }
 }
 

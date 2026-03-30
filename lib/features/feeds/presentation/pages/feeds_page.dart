@@ -17,6 +17,8 @@ import '../../../../core/database/local_db.dart';
 
 import '../../data/models/third_party_server.dart';
 
+import 'article_detail_page.dart';
+
 class FeedsPage extends ConsumerStatefulWidget {
   const FeedsPage({super.key});
 
@@ -119,11 +121,27 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
       return DenseArticleTile(
         title: entry.title,
         subtitle: entry.subtitle,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ArticleDetailPage(entry: entry),
+            ),
+          );
+        },
       );
     } else {
       return ArticleTile(
         title: entry.title,
         subtitle: entry.subtitle,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ArticleDetailPage(entry: entry),
+            ),
+          );
+        },
       );
     }
   }

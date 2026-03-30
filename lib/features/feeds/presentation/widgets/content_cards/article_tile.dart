@@ -5,17 +5,19 @@ import '../../../../../core/theme/app_colors.dart';
 class ArticleTile extends StatelessWidget {
   final String title;
   final String subtitle;
+  final VoidCallback? onTap;
 
   const ArticleTile({
     super.key,
     required this.title,
     required this.subtitle,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () {},
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 24.0),
         child: Column(

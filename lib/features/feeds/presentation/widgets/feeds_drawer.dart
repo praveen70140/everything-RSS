@@ -7,6 +7,7 @@ import '../../../../core/database/local_db.dart';
 import '../pages/saved_feeds_page.dart';
 import '../pages/feed_settings_page.dart';
 import '../pages/third_party_servers_page.dart';
+import '../pages/app_settings_page.dart';
 
 class FeedsDrawer extends StatefulWidget {
   final Function(String url) onFeedSelected;
@@ -246,6 +247,26 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                   context,
                   MaterialPageRoute(
                       builder: (context) => const ThirdPartyServersPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading:
+                  const Icon(Icons.settings, color: AppColors.blue, size: 20),
+              title: Text(
+                'App Settings',
+                style: GoogleFonts.manrope(
+                  color: AppColors.text,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const AppSettingsPage()),
                 );
               },
             ),
