@@ -169,6 +169,23 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
           return PhotoCard(
             imageUrl: entry.mediaUrl!,
             title: entry.title,
+            subtitle: entry.subtitle,
+            author: entry.author,
+            pubDate: entry.pubDate,
+            isRead: isRead,
+            onTap: () async {
+              await localDb.markEntryAsRead(entry.id);
+              setState(() {});
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ArticleDetailPage(
+                    entries: entries,
+                    initialIndex: index,
+                  ),
+                ),
+              );
+            },
           );
         }
         break;
