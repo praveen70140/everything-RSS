@@ -4,11 +4,11 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/database/local_db.dart';
 import '../../data/models/local_feed_folder.dart';
 import '../../data/models/local_feed_item.dart';
+import '../../data/models/third_party_server.dart';
 import '../pages/app_settings_page.dart';
 import '../pages/feed_settings_page.dart';
 import '../pages/saved_feeds_page.dart';
 import '../pages/third_party_servers_page.dart';
-import '../pages/app_settings_page.dart';
 
 class FeedsDrawer extends StatefulWidget {
   final Function(String? url, {String? feedName}) onFeedSelected;
@@ -129,6 +129,158 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
         .saveFeeds(_feeds.where((f) => f.folderId == newFolderId).toList());
   }
 
+  Future<void> _showRenameDialog(LocalFeedItem feed) async {
+    final TextEditingController renameController =
+        TextEditingController(text: feed.name);
+    return showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppColors.base,
+          title: Text('Rename Feed', style: TextStyle(color: AppColors.text)),
+          content: TextField(
+            controller: renameController,
+            style: TextStyle(color: AppColors.text),
+            decoration: InputDecoration(
+              hintText: 'Feed Name',
+              hintStyle: TextStyle(color: AppColors.overlay0),
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: AppColors.surface1),
+              ),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: AppColors.blue),
+              ),
+            ),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child:
+                  Text('Cancel', style: TextStyle(color: AppColors.subtext1)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.blue),
+              onPressed: () async {
+                final newName = renameController.text.trim();
+                if (newName.isNotEmpty) {
+                  feed.name = newName;
+                  await feed.save();
+                  _loadData();
+                }
+                Navigator.pop(context);
+              },
+              child: Text('Save', style: TextStyle(color: AppColors.base)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showSearchDialog() async {
+    final servers = await localDb.getThirdPartyServers();
+    if (servers.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content:
+                  Text('Please add a third-party server first in settings.')),
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
+
+    ThirdPartyServer selectedServer = servers.first;
+    final TextEditingController searchController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(builder: (context, setState) {
+          return AlertDialog(
+            backgroundColor: AppColors.base,
+            title: Text('Discover / Search',
+                style: TextStyle(color: AppColors.text)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButton<ThirdPartyServer>(
+                  value: selectedServer,
+                  isExpanded: true,
+                  dropdownColor: AppColors.surface0,
+                  style: TextStyle(color: AppColors.text),
+                  items: servers.map((s) {
+                    return DropdownMenuItem(
+                      value: s,
+                      child: Text(s.name, overflow: TextOverflow.ellipsis),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val != null) setState(() => selectedServer = val);
+                  },
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  controller: searchController,
+                  style: TextStyle(color: AppColors.text),
+                  decoration: InputDecoration(
+                    hintText: 'Enter search term...',
+                    hintStyle: TextStyle(color: AppColors.overlay0),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: AppColors.surface1),
+                    ),
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: AppColors.blue),
+                    ),
+                  ),
+                  autofocus: true,
+                  onSubmitted: (_) {
+                    Navigator.pop(context);
+                    _performSearch(selectedServer, searchController.text);
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child:
+                    Text('Cancel', style: TextStyle(color: AppColors.subtext1)),
+              ),
+              ElevatedButton(
+                style:
+                    ElevatedButton.styleFrom(backgroundColor: AppColors.blue),
+                onPressed: () {
+                  Navigator.pop(context);
+                  _performSearch(selectedServer, searchController.text);
+                },
+                child: Text('Search', style: TextStyle(color: AppColors.base)),
+              ),
+            ],
+          );
+        });
+      },
+    );
+  }
+
+  Future<void> _performSearch(ThirdPartyServer server, String term) async {
+    if (term.isEmpty) return;
+
+    final baseUrl = server.url.endsWith('/')
+        ? server.url.substring(0, server.url.length - 1)
+        : server.url;
+    final searchUrl = '$baseUrl/search?q=${Uri.encodeComponent(term)}';
+
+    // Close drawer
+    Navigator.pop(context);
+
+    // Load search results as a feed
+    widget.onFeedSelected(searchUrl, feedName: 'Search: $term');
+  }
+
   @override
   void dispose() {
     _feedController.dispose();
@@ -166,10 +318,9 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
               onTap: () => widget.onFeedSelected(null, feedName: 'ALL FEEDS'),
             ),
             ListTile(
-              leading: Icon(Icons.watch_later_outlined,
-                  color: AppColors.green),
-              title: Text('To do',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+              leading: Icon(Icons.watch_later_outlined, color: AppColors.green),
+              title:
+                  Text('To do', style: TextStyle(fontWeight: FontWeight.bold)),
               onTap: () {
                 Navigator.pop(context); // Close drawer
                 Navigator.push(
@@ -184,8 +335,7 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
               },
             ),
             ListTile(
-              leading:
-                  Icon(Icons.archive_outlined, color: AppColors.mauve),
+              leading: Icon(Icons.archive_outlined, color: AppColors.mauve),
               title: Text('Archive',
                   style: TextStyle(fontWeight: FontWeight.bold)),
               onTap: () {
@@ -200,6 +350,12 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                   ),
                 );
               },
+            ),
+            ListTile(
+              leading: Icon(Icons.search, color: AppColors.blue),
+              title: Text('Discover',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              onTap: _showSearchDialog,
             ),
             Divider(color: AppColors.surface1),
             Padding(
@@ -295,8 +451,7 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
               },
             ),
             ListTile(
-              leading:
-                  Icon(Icons.settings, color: AppColors.blue, size: 20),
+              leading: Icon(Icons.settings, color: AppColors.blue, size: 20),
               title: Text(
                 'App Settings',
                 style: GoogleFonts.manrope(
@@ -516,8 +671,7 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
           decoration: BoxDecoration(
             border: isHovered
                 ? Border(top: BorderSide(color: AppColors.blue, width: 2))
-                : Border(
-                    top: BorderSide(color: Colors.transparent, width: 2)),
+                : Border(top: BorderSide(color: Colors.transparent, width: 2)),
           ),
           child: LongPressDraggable<LocalFeedItem>(
             data: feed,
@@ -539,8 +693,7 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.rss_feed,
-                        color: AppColors.green, size: 20),
+                    Icon(Icons.rss_feed, color: AppColors.green, size: 20),
                     SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -578,6 +731,11 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
         color: AppColors.surface1,
         itemBuilder: (context) => [
           PopupMenuItem(
+            value: 'rename',
+            child: Text('Rename',
+                style: TextStyle(color: AppColors.text, fontSize: 12)),
+          ),
+          PopupMenuItem(
             value: 'archive',
             child: Text('View Archive',
                 style: TextStyle(color: AppColors.text, fontSize: 12)),
@@ -597,7 +755,9 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
           // Close drawer
           Navigator.pop(context);
 
-          if (value == 'settings') {
+          if (value == 'rename') {
+            _showRenameDialog(feed);
+          } else if (value == 'settings') {
             Navigator.push(
               context,
               MaterialPageRoute(

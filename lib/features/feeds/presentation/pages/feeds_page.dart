@@ -15,8 +15,6 @@ import '../widgets/content_cards/dense_article_tile.dart';
 import '../../data/models/saved_feed_entry.dart';
 import '../../../../core/database/local_db.dart';
 
-import '../../data/models/third_party_server.dart';
-
 import 'article_detail_page.dart';
 
 class FeedsPage extends ConsumerStatefulWidget {
@@ -244,91 +242,6 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
     }
   }
 
-  Future<void> _showSearchDialog() async {
-    final servers = await localDb.getThirdPartyServers();
-    if (servers.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Please add a third-party server first.')),
-        );
-      }
-      return;
-    }
-
-    if (!mounted) return;
-
-    ThirdPartyServer selectedServer = servers.first;
-    final TextEditingController searchController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(builder: (context, setState) {
-          return AlertDialog(
-            title: Text('Search'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButton<ThirdPartyServer>(
-                  value: selectedServer,
-                  isExpanded: true,
-                  items: servers.map((s) {
-                    return DropdownMenuItem(
-                      value: s,
-                      child: Text(s.name, overflow: TextOverflow.ellipsis),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    if (val != null) setState(() => selectedServer = val);
-                  },
-                ),
-                SizedBox(height: 16),
-                TextField(
-                  controller: searchController,
-                  decoration: const InputDecoration(
-                    hintText: 'Enter search term...',
-                  ),
-                  autofocus: true,
-                  onSubmitted: (_) {
-                    Navigator.pop(context);
-                    _performSearch(selectedServer, searchController.text);
-                  },
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _performSearch(selectedServer, searchController.text);
-                },
-                child: Text('Search'),
-              ),
-            ],
-          );
-        });
-      },
-    );
-  }
-
-  Future<void> _performSearch(ThirdPartyServer server, String term) async {
-    if (term.isEmpty) return;
-
-    final baseUrl = server.url.endsWith('/')
-        ? server.url.substring(0, server.url.length - 1)
-        : server.url;
-    final searchUrl = '$baseUrl/search?q=${Uri.encodeComponent(term)}';
-
-    // Call load feed with search URL directly. It won't be proxied again because
-    // the search domain likely won't match the supported domains exactly as an original URL.
-    _loadFeed(searchUrl, forceRefresh: true);
-  }
-
   @override
   Widget build(BuildContext context) {
     final isMediaPlaying = ref.watch(mediaStateProvider).mediaItem != null;
@@ -344,11 +257,6 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: Icon(Icons.search),
-            onPressed: _showSearchDialog,
-            tooltip: 'Search via Third-Party Server',
-          ),
           IconButton(
             icon: Icon(Icons.refresh),
             onPressed: () => _loadFeed(_currentFeedUrl, forceRefresh: true),

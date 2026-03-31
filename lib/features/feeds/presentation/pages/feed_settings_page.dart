@@ -16,7 +16,6 @@ class _FeedSettingsPageState extends State<FeedSettingsPage> {
   late bool autoDownload;
   late bool requireWiFi;
   late String? autoDownloadTime;
-  late TextEditingController _nameController;
 
   @override
   void initState() {
@@ -24,19 +23,9 @@ class _FeedSettingsPageState extends State<FeedSettingsPage> {
     autoDownload = widget.feed.autoDownload;
     requireWiFi = widget.feed.requireWiFi;
     autoDownloadTime = widget.feed.autoDownloadTime;
-    _nameController = TextEditingController(text: widget.feed.name);
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    super.dispose();
   }
 
   Future<void> _saveSettings() async {
-    widget.feed.name = _nameController.text.trim().isNotEmpty
-        ? _nameController.text.trim()
-        : widget.feed.name;
     widget.feed.autoDownload = autoDownload;
     widget.feed.requireWiFi = requireWiFi;
     widget.feed.autoDownloadTime = autoDownloadTime;
@@ -83,30 +72,6 @@ class _FeedSettingsPageState extends State<FeedSettingsPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          TextField(
-            controller: _nameController,
-            style: TextStyle(color: AppColors.text),
-            decoration: InputDecoration(
-              labelText: 'Feed Name',
-              labelStyle: TextStyle(color: AppColors.overlay0),
-              filled: true,
-              fillColor: AppColors.crust,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: AppColors.surface1),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: AppColors.surface1),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: AppColors.blue),
-              ),
-            ),
-            onSubmitted: (_) => _saveSettings(),
-          ),
-          SizedBox(height: 24),
           SwitchListTile(
             title: Text('Auto-Download Media',
                 style: TextStyle(color: AppColors.text)),
@@ -124,8 +89,7 @@ class _FeedSettingsPageState extends State<FeedSettingsPage> {
             SwitchListTile(
               title: Text('Require Wi-Fi',
                   style: TextStyle(color: AppColors.text)),
-              subtitle: Text(
-                  'Only download when connected to a Wi-Fi network',
+              subtitle: Text('Only download when connected to a Wi-Fi network',
                   style: TextStyle(color: AppColors.subtext1)),
               value: requireWiFi,
               onChanged: (val) {
@@ -140,8 +104,7 @@ class _FeedSettingsPageState extends State<FeedSettingsPage> {
               subtitle: Text(
                   autoDownloadTime != null ? autoDownloadTime! : 'Not set',
                   style: TextStyle(color: AppColors.subtext1)),
-              trailing:
-                  Icon(Icons.access_time, color: AppColors.overlay0),
+              trailing: Icon(Icons.access_time, color: AppColors.overlay0),
               onTap: _pickTime,
             ),
           ],
