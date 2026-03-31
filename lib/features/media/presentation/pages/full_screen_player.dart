@@ -15,6 +15,74 @@ class FullScreenPlayer extends ConsumerWidget {
     return [if (duration.inHours > 0) hours, minutes, seconds].join(':');
   }
 
+  void _showSleepTimerBottomSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  'Sleep Timer',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.timer_off),
+                title: const Text('Off'),
+                onTap: () {
+                  ref.read(mediaStateProvider.notifier).clearSleepTimer();
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.timer_10),
+                title: const Text('15 Minutes'),
+                onTap: () {
+                  ref
+                      .read(mediaStateProvider.notifier)
+                      .setSleepTimer(const Duration(minutes: 15));
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.timer_3),
+                title: const Text('30 Minutes'),
+                onTap: () {
+                  ref
+                      .read(mediaStateProvider.notifier)
+                      .setSleepTimer(const Duration(minutes: 30));
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.timer),
+                title: const Text('60 Minutes'),
+                onTap: () {
+                  ref
+                      .read(mediaStateProvider.notifier)
+                      .setSleepTimer(const Duration(minutes: 60));
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mediaState = ref.watch(mediaStateProvider);
@@ -205,21 +273,26 @@ class FullScreenPlayer extends ConsumerWidget {
                         ),
                       ),
 
-                      // Fast Forward 15s
+                      // Fast Forward 30s
                       IconButton(
-                        icon: Icon(Icons
-                            .forward_10_rounded), // Fast forward equivalent
+                        icon: Icon(Icons.forward_30_rounded),
                         iconSize: 36,
                         onPressed: () =>
                             ref.read(mediaStateProvider.notifier).fastForward(),
                       ),
 
-                      // More options / AirPlay placeholder
+                      // Sleep Timer Option
                       IconButton(
-                        icon: Icon(Icons.more_horiz_rounded),
+                        icon: Icon(
+                          Icons.timer_rounded,
+                          color: mediaState.sleepTimerEndTime != null
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.grey[400],
+                        ),
                         iconSize: 28,
-                        color: Colors.grey[400],
-                        onPressed: () {},
+                        onPressed: () {
+                          _showSleepTimerBottomSheet(context, ref);
+                        },
                       ),
                     ],
                   ),

@@ -4,17 +4,15 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/media/media_provider.dart';
 import '../../data/models/feed_entry.dart';
-import '../../data/repositories/rss_service.dart';
 import '../widgets/feeds_drawer.dart';
 import '../widgets/content_cards/photo_card.dart';
 import '../widgets/content_cards/video_card.dart';
 import '../widgets/content_cards/article_tile.dart';
 import '../widgets/content_cards/audio_tile.dart';
 import '../widgets/content_cards/dense_article_tile.dart';
-
-import '../../data/models/saved_feed_entry.dart';
+import '../widgets/skeleton/skeleton_feed_list.dart';
+import '../providers/feeds_provider.dart';
 import '../../../../core/database/local_db.dart';
-
 import 'article_detail_page.dart';
 
 class FeedsPage extends ConsumerStatefulWidget {
@@ -25,22 +23,13 @@ class FeedsPage extends ConsumerStatefulWidget {
 }
 
 class _FeedsPageState extends ConsumerState<FeedsPage> {
-  final RssService _rssService = RssService();
   final ScrollController _scrollController = ScrollController();
-  List<FeedEntry> _entries = [];
-  Set<String> _hiddenEntryIds = {};
-  bool _isLoading = true;
-  String? _error;
   int _visibleLimit = 20;
-
-  String? _currentFeedUrl; // null means 'All Feeds'
-  String _currentFeedName = 'ALL FEEDS';
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _loadFeed(null);
   }
 
   @override
@@ -50,9 +39,12 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
   }
 
   void _onScroll() {
+    final state = ref.read(feedsProvider).value;
+    if (state == null) return;
+
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 500) {
-      if (_visibleLimit < _entries.length) {
+      if (_visibleLimit < state.entries.length) {
         setState(() {
           _visibleLimit += 20;
         });
@@ -60,108 +52,43 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
     }
   }
 
-  Future<void> _loadFeed(String? url,
-      {bool forceRefresh = false, String? feedName}) async {
-    setState(() {
-      _currentFeedUrl = url;
-      _currentFeedName = feedName ?? (url == null ? 'ALL FEEDS' : 'FEED');
-      _visibleLimit = 20; // Reset limit when feed changes
-      if (_entries.isEmpty || forceRefresh == false) {
-        _isLoading = true;
+  void _handleDismiss(FeedEntry entry, String status) {
+    final notifier = ref.read(feedsProvider.notifier);
+
+    // Optimistic hide
+    notifier.hideEntry(entry.id);
+
+    // Show undo snackbar
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context)
+        .showSnackBar(
+          SnackBar(
+            content:
+                Text('Moved to ${status == 'archive' ? 'Archive' : 'To-Do'}'),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'UNDO',
+              textColor: AppColors.blue,
+              onPressed: () {
+                notifier.restoreEntry(entry.id);
+              },
+            ),
+          ),
+        )
+        .closed
+        .then((reason) {
+      if (reason != SnackBarClosedReason.action) {
+        // If not undone, save to DB
+        notifier.saveEntryToDb(entry, status);
       }
-      _error = null;
-    });
-
-    try {
-      List<FeedEntry> allEntries = [];
-      Set<String> hiddenIds = {};
-
-      if (url == null) {
-        // Load all feeds
-        final feeds = await localDb.getFeeds();
-        if (feeds.isEmpty) {
-          // Fallback if empty to something just to show, though we should probably just show empty state
-          setState(() {
-            _entries = [];
-            _hiddenEntryIds = {};
-            _isLoading = false;
-          });
-          return;
-        }
-
-        // Fetch concurrently
-        final futures = feeds.map((feed) async {
-          try {
-            final fetchUrl = await localDb.getProxyUrl(feed.url);
-            final entries = await _rssService.fetchFeed(fetchUrl,
-                forceRefresh: forceRefresh,
-                feedName: feed.name,
-                originalUrl: feed.url);
-            final ids = await localDb.getAllSavedEntryIds(feed.url);
-            return {'entries': entries, 'hiddenIds': ids};
-          } catch (e) {
-            print('Error fetching feed ${feed.url}: $e');
-            return null;
-          }
-        });
-
-        final results = await Future.wait(futures);
-        for (var res in results) {
-          if (res != null) {
-            allEntries.addAll(res['entries'] as List<FeedEntry>);
-            hiddenIds.addAll(res['hiddenIds'] as Iterable<String>);
-          }
-        }
-
-        // Sort globally by pubDate
-        allEntries.sort((a, b) {
-          if (a.pubDate == null && b.pubDate == null) return 0;
-          if (a.pubDate == null) return 1;
-          if (b.pubDate == null) return -1;
-          return b.pubDate!.compareTo(a.pubDate!);
-        });
-      } else {
-        // Load single feed
-        final fetchUrl = await localDb.getProxyUrl(url);
-        allEntries = await _rssService.fetchFeed(fetchUrl,
-            forceRefresh: forceRefresh, feedName: feedName, originalUrl: url);
-        final ids = await localDb.getAllSavedEntryIds(url);
-        hiddenIds = ids.toSet();
-      }
-
-      setState(() {
-        _entries = allEntries;
-        _hiddenEntryIds = hiddenIds;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _saveEntry(FeedEntry entry, String status) async {
-    final savedEntry = SavedFeedEntry()
-      ..feedUrl = entry.feedUrl ?? _currentFeedUrl ?? ''
-      ..entryId = entry.id
-      ..title = entry.title
-      ..subtitle = entry.subtitle
-      ..mediaType = entry.mediaType.toString()
-      ..mediaUrl = entry.mediaUrl
-      ..status = status;
-
-    await localDb.saveFeedEntry(savedEntry);
-
-    setState(() {
-      _hiddenEntryIds.add(entry.id);
     });
   }
 
   Widget _buildContentItem(List<FeedEntry> entries, int index, bool isDense) {
     final entry = entries[index];
     final bool isRead = localDb.isEntryRead(entry.id);
+    final state = ref.read(feedsProvider).value;
 
     switch (entry.mediaType) {
       case MediaType.image:
@@ -176,15 +103,17 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
             onTap: () async {
               await localDb.markEntryAsRead(entry.id);
               setState(() {});
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ArticleDetailPage(
-                    entries: entries,
-                    initialIndex: index,
+              if (mounted) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ArticleDetailPage(
+                      entries: entries,
+                      initialIndex: index,
+                    ),
                   ),
-                ),
-              );
+                );
+              }
             },
           );
         }
@@ -205,7 +134,7 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
             title: entry.title,
             author: entry.feedName ??
                 entry.feedUrl ??
-                _currentFeedUrl ??
+                state?.currentFeedUrl ??
                 'Unknown Feed',
           );
         }
@@ -225,15 +154,17 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
         onTap: () async {
           await localDb.markEntryAsRead(entry.id);
           setState(() {});
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ArticleDetailPage(
-                entries: entries,
-                initialIndex: index,
+          if (mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ArticleDetailPage(
+                  entries: entries,
+                  initialIndex: index,
+                ),
               ),
-            ),
-          );
+            );
+          }
         },
       );
     } else {
@@ -246,15 +177,17 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
         onTap: () async {
           await localDb.markEntryAsRead(entry.id);
           setState(() {});
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ArticleDetailPage(
-                entries: entries,
-                initialIndex: index,
+          if (mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ArticleDetailPage(
+                  entries: entries,
+                  initialIndex: index,
+                ),
               ),
-            ),
-          );
+            );
+          }
         },
       );
     }
@@ -262,12 +195,16 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final feedsStateAsync = ref.watch(feedsProvider);
     final isMediaPlaying = ref.watch(mediaStateProvider).mediaItem != null;
+
+    final feedName = feedsStateAsync.value?.currentFeedName ?? 'ALL FEEDS';
+    final currentFeedUrl = feedsStateAsync.value?.currentFeedUrl;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _currentFeedName,
+          feedName,
           style: GoogleFonts.epilogue(
             fontWeight: FontWeight.w900,
             fontSize: 16,
@@ -276,8 +213,20 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
         ),
         actions: [
           IconButton(
+            icon: Icon(Icons.done_all),
+            onPressed: () {
+              ref.read(feedsProvider.notifier).markAllAsRead();
+            },
+            tooltip: 'Mark All As Read',
+          ),
+          IconButton(
             icon: Icon(Icons.refresh),
-            onPressed: () => _loadFeed(_currentFeedUrl, forceRefresh: true),
+            onPressed: () {
+              ref
+                  .read(feedsProvider.notifier)
+                  .loadFeed(currentFeedUrl, forceRefresh: true);
+              setState(() => _visibleLimit = 20);
+            },
             tooltip: 'Refresh Feed',
           ),
         ],
@@ -289,49 +238,48 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
       drawer: FeedsDrawer(
         onFeedSelected: (url, {feedName}) {
           Navigator.pop(context);
-          _loadFeed(url, feedName: feedName);
+          setState(() => _visibleLimit = 20);
+          ref.read(feedsProvider.notifier).loadFeed(url, feedName: feedName);
         },
       ),
-      body: _buildBody(isMediaPlaying),
+      body: feedsStateAsync.when(
+        data: (state) => _buildBody(state, isMediaPlaying),
+        loading: () => const SkeletonFeedList(),
+        error: (error, stack) => _buildError(error.toString()),
+      ),
     );
   }
 
-  Widget _buildBody(bool isMediaPlaying) {
-    if (_isLoading) {
-      return Center(
-        child: CircularProgressIndicator(color: AppColors.blue),
-      );
-    }
-
-    if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, color: AppColors.red, size: 48),
-              SizedBox(height: 16),
-              Text(
-                'Failed to load feed',
-                style: GoogleFonts.epilogue(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.text),
-              ),
-              SizedBox(height: 8),
-              Text(
-                _error!,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.subtext1),
-              ),
-            ],
-          ),
+  Widget _buildError(String error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, color: AppColors.red, size: 48),
+            SizedBox(height: 16),
+            Text(
+              'Failed to load feed',
+              style: GoogleFonts.epilogue(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.text),
+            ),
+            SizedBox(height: 8),
+            Text(
+              error,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.subtext1),
+            ),
+          ],
         ),
-      );
-    }
+      ),
+    );
+  }
 
-    if (_entries.isEmpty) {
+  Widget _buildBody(FeedsState state, bool isMediaPlaying) {
+    if (state.entries.isEmpty) {
       return Center(
         child: Text(
           'No items found in feed.',
@@ -340,11 +288,17 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
       );
     }
 
-    final visibleEntries =
-        _entries.where((e) => !_hiddenEntryIds.contains(e.id)).toList();
+    final visibleEntries = state.entries
+        .where((e) => !state.hiddenEntryIds.contains(e.id))
+        .toList();
 
     return RefreshIndicator(
-      onRefresh: () => _loadFeed(_currentFeedUrl, forceRefresh: true),
+      onRefresh: () async {
+        await ref
+            .read(feedsProvider.notifier)
+            .loadFeed(state.currentFeedUrl, forceRefresh: true);
+        setState(() => _visibleLimit = 20);
+      },
       color: AppColors.blue,
       backgroundColor: AppColors.surface0,
       child: ListView.separated(
@@ -375,9 +329,9 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
             key: Key(entry.id),
             onDismissed: (direction) {
               if (direction == DismissDirection.endToStart) {
-                _saveEntry(entry, 'archive');
+                _handleDismiss(entry, 'archive');
               } else if (direction == DismissDirection.startToEnd) {
-                _saveEntry(entry, 'todo');
+                _handleDismiss(entry, 'todo');
               }
             },
             background: Container(

@@ -2,6 +2,7 @@ import 'package:workmanager/workmanager.dart';
 import 'package:flutter/material.dart';
 import 'database/local_db.dart';
 import 'download_manager.dart';
+import '../features/feeds/data/models/feed_entry.dart';
 import '../features/feeds/data/repositories/rss_service.dart';
 
 @pragma('vm:entry-point')
@@ -38,6 +39,16 @@ class BackgroundTasks {
     final feeds = await localDb.getFeeds();
 
     for (final feed in feeds) {
+      // First, simply fetch to trigger the caching in the background
+      final fetchUrl = await localDb.getProxyUrl(feed.url);
+      List<FeedEntry> entries = [];
+      try {
+        entries = await rssService.fetchFeed(fetchUrl, forceRefresh: true);
+      } catch (e) {
+        // Ignore errors, we can't do much in the background
+      }
+
+      // Then do media downloading only if autoDownload is enabled
       if (feed.autoDownload) {
         if (checkTime) {
           final now = TimeOfDay.now();
@@ -56,10 +67,6 @@ class BackgroundTasks {
             }
           }
         }
-
-        final fetchUrl = await localDb.getProxyUrl(feed.url);
-        final entries =
-            await rssService.fetchFeed(fetchUrl, forceRefresh: true);
 
         for (final entry in entries) {
           if (entry.mediaUrl != null && entry.mediaUrl!.isNotEmpty) {

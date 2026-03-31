@@ -49,7 +49,7 @@ class DenseArticleTile extends StatelessWidget {
                     ),
                   if (author != null && pubDate != null)
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 6.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 6.0),
                       child: Text('•',
                           style: TextStyle(
                               color: AppColors.overlay0, fontSize: 10)),

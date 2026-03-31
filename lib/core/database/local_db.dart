@@ -183,20 +183,91 @@ class LocalDatabase {
   Future<String> getProxyUrl(String originalUrl) async {
     try {
       final uri = Uri.parse(originalUrl);
-      final domain = uri.host;
+      var domain = uri.host.toLowerCase();
       if (domain.isEmpty) return originalUrl;
 
+      if (domain.startsWith('www.')) {
+        domain = domain.substring(4);
+      }
+
+      // 1. Pre-Check for Existing RSS
+      if (originalUrl.endsWith('.rss') ||
+          originalUrl.endsWith('.atom') ||
+          originalUrl.endsWith('.xml')) {
+        return originalUrl;
+      }
+
+      final path = uri.path;
+      final pathSegments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+
+      // 2. Native Interception (No Proxy Needed)
+      if (domain == 'reddit.com' || domain == 'old.reddit.com') {
+        if (path.startsWith('/r/') || path.startsWith('/user/')) {
+          final cleanPath =
+              path.endsWith('/') ? path.substring(0, path.length - 1) : path;
+          return 'https://$domain$cleanPath.rss';
+        }
+      } else if (domain == 'medium.com' || domain.endsWith('.medium.com')) {
+        if (domain == 'medium.com' &&
+            pathSegments.length == 1 &&
+            pathSegments[0].startsWith('@')) {
+          return 'https://$domain/feed/${pathSegments[0]}';
+        } else if (domain.endsWith('.medium.com')) {
+          return 'https://$domain/feed';
+        }
+      } else if (domain == 'github.com') {
+        if (pathSegments.length == 3 && pathSegments[2] == 'releases') {
+          return 'https://$domain/${pathSegments[0]}/${pathSegments[1]}/releases.atom';
+        } else if (pathSegments.length >= 3 && pathSegments[2] == 'commits') {
+          final cleanPath =
+              path.endsWith('/') ? path.substring(0, path.length - 1) : path;
+          return 'https://$domain$cleanPath.atom';
+        }
+      }
+
+      // 3. Server Routing (yt-dlp vs RSSHub)
       final servers = await getThirdPartyServers();
-      for (final server in servers) {
-        for (final supportedDomain in server.supportedDomains) {
-          if (domain == supportedDomain ||
-              domain.endsWith('.$supportedDomain')) {
-            // Found a matching server, construct the proxy URL
-            // Assuming the proxy expects something like: server.url/feed?url=originalUrl
-            final proxyBaseUrl = server.url.endsWith('/')
-                ? server.url.substring(0, server.url.length - 1)
-                : server.url;
-            return '$proxyBaseUrl/feed?url=${Uri.encodeComponent(originalUrl)}';
+
+      // Separate servers by type
+      final ytDlpServers =
+          servers.where((s) => s.serverType == 'ytdlp').toList();
+      final rssHubServers =
+          servers.where((s) => s.serverType == 'rsshub').toList();
+
+      // Check for yt-dlp (YouTube)
+      if (domain == 'youtube.com' || domain == 'youtu.be') {
+        if (ytDlpServers.isNotEmpty) {
+          final server = ytDlpServers.first;
+          final proxyBaseUrl = server.url.endsWith('/')
+              ? server.url.substring(0, server.url.length - 1)
+              : server.url;
+          return '$proxyBaseUrl/feed?url=${Uri.encodeComponent(originalUrl)}';
+        }
+      }
+
+      // Check for RSSHub (Twitter/X and Mastodon)
+      if (rssHubServers.isNotEmpty) {
+        final server = rssHubServers.first;
+        final proxyBaseUrl = server.url.endsWith('/')
+            ? server.url.substring(0, server.url.length - 1)
+            : server.url;
+
+        // Twitter/X Route
+        if (domain == 'twitter.com' || domain == 'x.com') {
+          if (pathSegments.isNotEmpty) {
+            final username = pathSegments.first;
+            return '$proxyBaseUrl/twitter/user/$username';
+          }
+        }
+
+        // Mastodon Route
+        if (domain.contains('mastodon.') ||
+            domain == 'mastodon.social' ||
+            domain == 'mstdn.social' ||
+            domain == 'pawoo.net') {
+          if (pathSegments.length == 1 && pathSegments[0].startsWith('@')) {
+            final username = pathSegments[0].substring(1); // Remove the @
+            return '$proxyBaseUrl/mastodon/acct/$username@$domain/statuses';
           }
         }
       }

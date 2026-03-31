@@ -56,19 +56,53 @@ class RssService {
       if (xmlString.isNotEmpty) {
         final document = XmlDocument.parse(xmlString);
 
-        final items = document.findAllElements('item');
+        // Check for RSS items first, then fallback to Atom entries
+        var items = document.findAllElements('item');
+        bool isAtom = false;
+        if (items.isEmpty) {
+          items = document.findAllElements('entry');
+          isAtom = true;
+        }
+
         List<FeedEntry> entries = [];
 
         for (var item in items) {
           final title = _getElementText(item, 'title') ?? 'No Title';
-          final link = _getElementText(item, 'link') ?? '';
-          String description = _getElementText(item, 'description') ?? '';
+
+          String link = '';
+          if (isAtom) {
+            // Atom feeds use <link href="...">
+            final linkElements = item.findElements('link');
+            if (linkElements.isNotEmpty) {
+              final alternateLink = linkElements.cast<XmlElement?>().firstWhere(
+                  (e) => e?.getAttribute('rel') == 'alternate',
+                  orElse: () => linkElements.first);
+              link = alternateLink?.getAttribute('href') ?? '';
+            }
+          } else {
+            link = _getElementText(item, 'link') ?? '';
+          }
+
+          String description = _getElementText(item, 'description') ??
+              _getElementText(item, 'content') ??
+              _getElementText(item, 'summary') ??
+              '';
 
           String? author = _getElementText(item, 'dc:creator') ??
               _getElementText(item, 'author');
 
+          // In Atom, author is usually an element containing a name element
+          if (isAtom && author == null) {
+            final authorElements = item.findElements('author');
+            if (authorElements.isNotEmpty) {
+              author = _getElementText(authorElements.first, 'name');
+            }
+          }
+
           DateTime? pubDate;
-          final pubDateStr = _getElementText(item, 'pubDate');
+          final pubDateStr = _getElementText(item, 'pubDate') ??
+              _getElementText(item, 'updated') ??
+              _getElementText(item, 'published');
           if (pubDateStr != null && pubDateStr.isNotEmpty) {
             try {
               pubDate = HttpDate.parse(pubDateStr);

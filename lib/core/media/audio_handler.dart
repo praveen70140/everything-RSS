@@ -84,13 +84,13 @@ class AppAudioHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> fastForward() async {
-    final newPos = _player.position + const Duration(seconds: 15);
+    final newPos = _player.position + const Duration(seconds: 30);
     await seek(newPos);
   }
 
   @override
   Future<void> rewind() async {
-    final newPos = _player.position - const Duration(seconds: 15);
+    final newPos = _player.position - const Duration(seconds: 10);
     await seek(newPos > Duration.zero ? newPos : Duration.zero);
   }
 

@@ -7,3 +7,12 @@ services:
     restart: always
     environment:
       - PORT=3000
+
+  rsshub:
+    image: diygod/rsshub
+    ports:
+      - "1200:1200"
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - CACHE_TYPE=memory

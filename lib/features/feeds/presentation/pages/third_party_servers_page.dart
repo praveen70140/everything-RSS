@@ -33,7 +33,7 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
     });
   }
 
-  Future<void> _addOrUpdateServer(String url, String name,
+  Future<void> _addOrUpdateServer(String url, String name, String serverType,
       {ThirdPartyServer? existingServer}) async {
     if (url.isEmpty) return;
 
@@ -45,21 +45,27 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
     }
 
     try {
-      // Fetch links.txt
-      final linkTxtUrl =
-          url.endsWith('/') ? '${url}links.txt' : '$url/links.txt';
-      final response = await http.get(Uri.parse(linkTxtUrl));
-
       List<String> domains = [];
-      if (response.statusCode == 200) {
-        domains = response.body
-            .split('\n')
-            .map((e) => e.trim())
-            .where((e) => e.isNotEmpty)
-            .toList();
-      } else {
-        throw Exception(
-            'Failed to load links.txt (Status: ${response.statusCode})');
+
+      if (serverType == 'ytdlp') {
+        // Fetch links.txt for yt-dlp-RSS servers
+        final linkTxtUrl =
+            url.endsWith('/') ? '${url}links.txt' : '$url/links.txt';
+        final response = await http.get(Uri.parse(linkTxtUrl));
+
+        if (response.statusCode == 200) {
+          domains = response.body
+              .split('\n')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList();
+        } else {
+          throw Exception(
+              'Failed to load links.txt (Status: ${response.statusCode})');
+        }
+      } else if (serverType == 'rsshub') {
+        // RSSHub supports hundreds of domains natively via routing, no need to fetch links.txt
+        domains = ['*']; // We'll handle routing logic in getProxyUrl
       }
 
       final server = existingServer ??
@@ -67,19 +73,21 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
             id: const Uuid().v4(),
             url: url,
             name: name.isEmpty ? Uri.parse(url).host : name,
+            serverType: serverType,
           );
 
       server.url = url;
       server.name = name.isEmpty ? server.name : name;
       server.supportedDomains = domains;
+      server.serverType = serverType;
 
       await localDb.saveThirdPartyServer(server);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(
-                  'Server added/updated successfully with ${domains.length} domains')),
+              content:
+                  Text('Server added/updated successfully. Type: $serverType')),
         );
       }
 
@@ -102,49 +110,101 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
   void _showAddServerDialog({ThirdPartyServer? server}) {
     final urlController = TextEditingController(text: server?.url);
     final nameController = TextEditingController(text: server?.name);
+    String selectedType = server?.serverType ?? 'ytdlp';
 
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title:
-              Text(server == null ? 'Add Third-Party Server' : 'Edit Server'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Name (Optional)',
-                  hintText: 'My RSS Proxy',
+        return StatefulBuilder(builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: AppColors.base,
+            title: Text(
+                server == null ? 'Add Third-Party Server' : 'Edit Server',
+                style: TextStyle(color: AppColors.text)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DropdownButton<String>(
+                  value: selectedType,
+                  isExpanded: true,
+                  dropdownColor: AppColors.surface0,
+                  style: TextStyle(color: AppColors.text),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'ytdlp',
+                      child: Text('yt-dlp-RSS Proxy'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'rsshub',
+                      child: Text('RSSHub Proxy'),
+                    ),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) {
+                      setDialogState(() => selectedType = val);
+                    }
+                  },
                 ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: nameController,
+                  style: TextStyle(color: AppColors.text),
+                  decoration: InputDecoration(
+                    labelText: 'Name (Optional)',
+                    labelStyle: TextStyle(color: AppColors.overlay0),
+                    hintText: 'My Proxy',
+                    hintStyle: TextStyle(color: AppColors.surface1),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: AppColors.surface1),
+                    ),
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: AppColors.blue),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 8),
+                TextField(
+                  controller: urlController,
+                  style: TextStyle(color: AppColors.text),
+                  decoration: InputDecoration(
+                    labelText: 'Server URL',
+                    labelStyle: TextStyle(color: AppColors.overlay0),
+                    hintText: selectedType == 'rsshub'
+                        ? 'https://rsshub.app'
+                        : 'https://proxy.example.com',
+                    hintStyle: TextStyle(color: AppColors.surface1),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: AppColors.surface1),
+                    ),
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: AppColors.blue),
+                    ),
+                  ),
+                  keyboardType: TextInputType.url,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child:
+                    Text('Cancel', style: TextStyle(color: AppColors.subtext1)),
               ),
-              SizedBox(height: 8),
-              TextField(
-                controller: urlController,
-                decoration: const InputDecoration(
-                  labelText: 'Server URL',
-                  hintText: 'https://proxy.example.com',
-                ),
-                keyboardType: TextInputType.url,
+              ElevatedButton(
+                style:
+                    ElevatedButton.styleFrom(backgroundColor: AppColors.blue),
+                onPressed: () {
+                  Navigator.pop(context);
+                  _addOrUpdateServer(
+                      urlController.text, nameController.text, selectedType,
+                      existingServer: server);
+                },
+                child: Text('Save', style: TextStyle(color: AppColors.base)),
               ),
             ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _addOrUpdateServer(urlController.text, nameController.text,
-                    existingServer: server);
-              },
-              child: Text('Save'),
-            ),
-          ],
-        );
+          );
+        });
       },
     );
   }
@@ -167,30 +227,35 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
         ),
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: AppColors.blue))
           : _servers.isEmpty
-              ? Center(child: Text('No third-party servers added yet.'))
+              ? Center(
+                  child: Text('No third-party servers added yet.',
+                      style: TextStyle(color: AppColors.subtext1)))
               : ListView.builder(
                   itemCount: _servers.length,
                   itemBuilder: (context, index) {
                     final server = _servers[index];
                     return ListTile(
-                      title: Text(server.name),
+                      title: Text(server.name,
+                          style: TextStyle(fontWeight: FontWeight.bold)),
                       subtitle: Text(
-                          '${server.url}\n${server.supportedDomains.length} domains supported'),
+                          'Type: ${server.serverType}\nURL: ${server.url}',
+                          style: TextStyle(color: AppColors.subtext1)),
                       isThreeLine: true,
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          if (server.serverType == 'ytdlp')
+                            IconButton(
+                              icon: Icon(Icons.refresh, color: AppColors.blue),
+                              tooltip: 'Refresh links.txt',
+                              onPressed: () => _addOrUpdateServer(
+                                  server.url, server.name, server.serverType,
+                                  existingServer: server),
+                            ),
                           IconButton(
-                            icon: Icon(Icons.refresh),
-                            tooltip: 'Refresh links.txt',
-                            onPressed: () => _addOrUpdateServer(
-                                server.url, server.name,
-                                existingServer: server),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.delete, color: Colors.red),
+                            icon: Icon(Icons.delete, color: AppColors.red),
                             onPressed: () => _deleteServer(server),
                           ),
                         ],
@@ -200,8 +265,9 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
                   },
                 ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: AppColors.blue,
         onPressed: () => _showAddServerDialog(),
-        child: Icon(Icons.add),
+        child: Icon(Icons.add, color: AppColors.base),
         tooltip: 'Add Server',
       ),
     );

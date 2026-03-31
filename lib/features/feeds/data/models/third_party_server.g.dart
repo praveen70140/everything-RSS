@@ -22,13 +22,14 @@ class ThirdPartyServerAdapter extends TypeAdapter<ThirdPartyServer> {
       name: fields[2] as String,
       supportedDomains:
           fields[3] == null ? const [] : (fields[3] as List).cast<String>(),
+      serverType: fields[4] == null ? 'ytdlp' : fields[4] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, ThirdPartyServer obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -36,7 +37,9 @@ class ThirdPartyServerAdapter extends TypeAdapter<ThirdPartyServer> {
       ..writeByte(2)
       ..write(obj.name)
       ..writeByte(3)
-      ..write(obj.supportedDomains);
+      ..write(obj.supportedDomains)
+      ..writeByte(4)
+      ..write(obj.serverType);
   }
 
   @override

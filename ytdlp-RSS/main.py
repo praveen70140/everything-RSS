@@ -58,18 +58,7 @@ async def get_links():
     """
     domains = [
         "youtube.com",
-        "youtu.be",
-        "twitter.com",
-        "x.com",
-        "instagram.com",
-        "tiktok.com",
-        "twitch.tv",
-        "vimeo.com",
-        "soundcloud.com",
-        "facebook.com",
-        "reddit.com",
-        "bilibili.com",
-        "dailymotion.com"
+        "youtu.be"
     ]
     return Response(content="\n".join(domains), media_type="text/plain")
 

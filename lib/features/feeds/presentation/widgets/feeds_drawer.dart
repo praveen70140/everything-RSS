@@ -23,8 +23,6 @@ class FeedsDrawer extends StatefulWidget {
 }
 
 class _FeedsDrawerState extends State<FeedsDrawer> {
-  bool _isAddFeedOpen = false;
-  bool _isAddFolderOpen = false;
   bool _isLoading = true;
 
   final TextEditingController _feedController = TextEditingController();
@@ -62,9 +60,6 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
       await localDb.saveFolder(newFolder);
 
       _folderController.clear();
-      setState(() {
-        _isAddFolderOpen = false;
-      });
       _loadData();
     }
   }
@@ -89,9 +84,6 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
       await localDb.saveFeed(newFeed);
 
       _feedController.clear();
-      setState(() {
-        _isAddFeedOpen = false;
-      });
       _loadData();
 
       widget.onFeedSelected(url);
@@ -366,10 +358,7 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                     child: _buildActionButton(
                       icon: Icons.add_circle,
                       label: 'FEED',
-                      onTap: () => setState(() {
-                        _isAddFeedOpen = !_isAddFeedOpen;
-                        _isAddFolderOpen = false;
-                      }),
+                      onTap: _showAddFeedSheet,
                     ),
                   ),
                   SizedBox(width: 8),
@@ -377,28 +366,11 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                     child: _buildActionButton(
                       icon: Icons.create_new_folder,
                       label: 'FOLDER',
-                      onTap: () => setState(() {
-                        _isAddFolderOpen = !_isAddFolderOpen;
-                        _isAddFeedOpen = false;
-                      }),
+                      onTap: _showAddFolderSheet,
                     ),
                   ),
                 ],
               ),
-            ),
-            _buildAnimatedForm(
-              isOpen: _isAddFeedOpen,
-              hintText: 'https://rss-link.com',
-              controller: _feedController,
-              onAdd: _addNewFeed,
-              onCancel: () => setState(() => _isAddFeedOpen = false),
-            ),
-            _buildAnimatedForm(
-              isOpen: _isAddFolderOpen,
-              hintText: 'Folder Name',
-              controller: _folderController,
-              onAdd: _addNewFolder,
-              onCancel: () => setState(() => _isAddFolderOpen = false),
             ),
             Expanded(
               child: _isLoading
@@ -508,82 +480,169 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
     );
   }
 
-  Widget _buildAnimatedForm({
-    required bool isOpen,
-    required String hintText,
-    required TextEditingController controller,
-    required VoidCallback onAdd,
-    required VoidCallback onCancel,
-  }) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-      height: isOpen ? 100 : 0,
-      padding: const EdgeInsets.symmetric(horizontal: 12.0),
-      child: SingleChildScrollView(
-        physics: const NeverScrollableScrollPhysics(),
-        child: Container(
-          margin: const EdgeInsets.only(top: 4),
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: AppColors.crust,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Column(
-            children: [
-              TextField(
-                controller: controller,
-                style: TextStyle(fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: hintText,
-                  hintStyle: TextStyle(color: AppColors.overlay0),
-                  filled: true,
-                  fillColor: AppColors.base,
-                  isDense: true,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(4),
-                    borderSide: BorderSide(color: AppColors.surface1),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(4),
-                    borderSide: BorderSide(color: AppColors.blue),
+  void _showAddFeedSheet() {
+    _feedController.clear();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.crust,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+          left: 24,
+          right: 24,
+          top: 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Add New Feed',
+              style: GoogleFonts.epilogue(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.text,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _feedController,
+              style: TextStyle(color: AppColors.text),
+              decoration: InputDecoration(
+                hintText: 'https://rss-link.com',
+                hintStyle: TextStyle(color: AppColors.overlay0),
+                filled: true,
+                fillColor: AppColors.base,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.surface1),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.blue),
+                ),
+              ),
+              autofocus: true,
+              onSubmitted: (_) {
+                Navigator.pop(context);
+                _addNewFeed();
+              },
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.blue,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                onSubmitted: (_) => onAdd(),
-              ),
-              SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.blue,
-                        foregroundColor: AppColors.base,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        minimumSize: Size.zero,
-                      ),
-                      onPressed: onAdd,
-                      child: Text('ADD',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 12)),
-                    ),
+                onPressed: () {
+                  Navigator.pop(context);
+                  _addNewFeed();
+                },
+                child: Text(
+                  'ADD FEED',
+                  style: TextStyle(
+                    color: AppColors.base,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
                   ),
-                  SizedBox(width: 8),
-                  TextButton(
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      minimumSize: Size.zero,
-                    ),
-                    onPressed: onCancel,
-                    child: Text('CANCEL',
-                        style: TextStyle(color: AppColors.text, fontSize: 12)),
-                  ),
-                ],
+                ),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAddFolderSheet() {
+    _folderController.clear();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.crust,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+          left: 24,
+          right: 24,
+          top: 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Create New Folder',
+              style: GoogleFonts.epilogue(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.text,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _folderController,
+              style: TextStyle(color: AppColors.text),
+              decoration: InputDecoration(
+                hintText: 'Folder Name',
+                hintStyle: TextStyle(color: AppColors.overlay0),
+                filled: true,
+                fillColor: AppColors.base,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.surface1),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.blue),
+                ),
+              ),
+              autofocus: true,
+              onSubmitted: (_) {
+                Navigator.pop(context);
+                _addNewFolder();
+              },
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.blue,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
+                  _addNewFolder();
+                },
+                child: Text(
+                  'CREATE FOLDER',
+                  style: TextStyle(
+                    color: AppColors.base,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
         ),
       ),
     );

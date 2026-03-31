@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:video_player/video_player.dart';
@@ -14,6 +15,7 @@ class MediaState {
   final Duration bufferedPosition;
   final PlaybackState? playbackState;
   final double speed;
+  final DateTime? sleepTimerEndTime;
 
   const MediaState({
     this.mediaItem,
@@ -21,6 +23,7 @@ class MediaState {
     this.bufferedPosition = Duration.zero,
     this.playbackState,
     this.speed = 1.0,
+    this.sleepTimerEndTime,
   });
 
   bool get isPlaying => playbackState?.playing ?? false;
@@ -34,6 +37,7 @@ class MediaState {
     Duration? bufferedPosition,
     PlaybackState? playbackState,
     double? speed,
+    DateTime? sleepTimerEndTime,
   }) {
     return MediaState(
       mediaItem: mediaItem ?? this.mediaItem,
@@ -41,12 +45,14 @@ class MediaState {
       bufferedPosition: bufferedPosition ?? this.bufferedPosition,
       playbackState: playbackState ?? this.playbackState,
       speed: speed ?? this.speed,
+      sleepTimerEndTime: sleepTimerEndTime ?? this.sleepTimerEndTime,
     );
   }
 }
 
 class MediaStateNotifier extends Notifier<MediaState> {
   AudioHandler get _handler => ref.read(audioHandlerProvider)!;
+  Timer? _sleepTimer;
 
   @override
   MediaState build() {
@@ -105,6 +111,30 @@ class MediaStateNotifier extends Notifier<MediaState> {
   Future<void> setSpeed(double speed) async {
     await _handler.customAction('setSpeed', {'speed': speed});
     state = state.copyWith(speed: speed);
+  }
+
+  void setSleepTimer(Duration duration) {
+    _sleepTimer?.cancel();
+    final endTime = DateTime.now().add(duration);
+    state = state.copyWith(sleepTimerEndTime: endTime);
+
+    _sleepTimer = Timer(duration, () {
+      pause();
+      clearSleepTimer();
+    });
+  }
+
+  void clearSleepTimer() {
+    _sleepTimer?.cancel();
+    _sleepTimer = null;
+    state = MediaState(
+      mediaItem: state.mediaItem,
+      position: state.position,
+      bufferedPosition: state.bufferedPosition,
+      playbackState: state.playbackState,
+      speed: state.speed,
+      sleepTimerEndTime: null, // explicit null
+    );
   }
 }
 
