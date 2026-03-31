@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:simple_pip_mode/simple_pip.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/media/media_provider.dart';
 import '../../../../../core/database/local_db.dart';
@@ -14,11 +15,13 @@ import 'download_button.dart';
 class VideoCard extends ConsumerStatefulWidget {
   final String videoUrl;
   final String title;
+  final String? imageUrl;
 
   const VideoCard({
     super.key,
     required this.videoUrl,
     required this.title,
+    this.imageUrl,
   });
 
   @override
@@ -199,7 +202,8 @@ class _VideoCardState extends ConsumerState<VideoCard> {
                             top: 16,
                             right: 16,
                             child: IconButton(
-                              icon: Icon(Icons.picture_in_picture_alt_rounded,
+                              icon: Icon(
+                                  Icons.picture_in_picture_alt_rounded,
                                   color: Colors.white),
                               onPressed: _enterPipMode,
                               tooltip: 'Picture in Picture',
@@ -246,7 +250,21 @@ class _VideoCardState extends ConsumerState<VideoCard> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Container(color: AppColors.surface0),
+          if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty)
+            CachedNetworkImage(
+              imageUrl: widget.imageUrl!,
+              fit: BoxFit.cover,
+              placeholder: (context, url) =>
+                  Container(color: AppColors.surface0),
+              errorWidget: (context, url, error) =>
+                  Container(color: AppColors.surface0),
+            )
+          else
+            Container(color: AppColors.surface0),
+          
+          // Dark Overlay
+          Container(color: Colors.black.withOpacity(0.2)),
+          
           Center(
             child: Container(
               width: 64,

@@ -71,7 +71,10 @@ class _SavedFeedsPageState extends State<SavedFeedsPage> {
         break;
       case MediaType.video:
         if (entry.mediaUrl != null) {
-          child = VideoCard(videoUrl: entry.mediaUrl!, title: entry.title);
+          child = VideoCard(
+            videoUrl: entry.mediaUrl!,
+            title: entry.title,
+          );
         } else {
           child = ArticleTile(title: entry.title, subtitle: entry.subtitle);
         }

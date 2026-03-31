@@ -7,6 +7,8 @@ class FeedEntry {
   final String link;
   final MediaType mediaType;
   final String? mediaUrl;
+  final String?
+      imageUrl; // Added to store video thumbnails or supplementary images
   final String? author;
   final DateTime? pubDate;
   String? feedName; // Added to identify feed source in Unified view
@@ -19,6 +21,7 @@ class FeedEntry {
     required this.link,
     required this.mediaType,
     this.mediaUrl,
+    this.imageUrl,
     this.author,
     this.pubDate,
     this.feedName,

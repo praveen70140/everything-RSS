@@ -194,6 +194,7 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
           return VideoCard(
             videoUrl: entry.mediaUrl!,
             title: entry.title,
+            imageUrl: entry.imageUrl,
           );
         }
         break;

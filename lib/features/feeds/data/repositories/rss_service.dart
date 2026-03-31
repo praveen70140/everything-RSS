@@ -87,6 +87,7 @@ class RssService {
           }
 
           String? mediaUrl;
+          String? imageUrl;
           MediaType mediaType = MediaType.text;
 
           // Check standard enclosures
@@ -102,40 +103,43 @@ class RssService {
               mediaType = MediaType.audio;
             } else if (type.startsWith('image')) {
               mediaType = MediaType.image;
+              imageUrl = mediaUrl; // Fallback image url
             }
           }
 
-          // Check media:content (common in news feeds)
-          if (mediaType == MediaType.text) {
-            final mediaContents = item.findAllElements('media:content');
-            if (mediaContents.isNotEmpty) {
-              final mediaContent = mediaContents.first;
-              final type = mediaContent.getAttribute('type') ?? '';
-              mediaUrl = mediaContent.getAttribute('url');
+          // Check media:content (common in news feeds and our yt-dlp bridge)
+          final mediaContents = item.findAllElements('media:content');
+          for (var mediaContent in mediaContents) {
+            final type = mediaContent.getAttribute('type') ?? '';
+            final medium = mediaContent.getAttribute('medium') ?? '';
+            final url = mediaContent.getAttribute('url');
 
-              if (type.startsWith('video') ||
-                  (mediaContent.getAttribute('medium') == 'video')) {
+            if (type.startsWith('image') || medium == 'image') {
+              imageUrl ??= url; // Prefer the first image found
+            } else if (mediaType == MediaType.text) {
+              // Only override if we haven't found a primary media yet (like enclosure)
+              if (type.startsWith('video') || medium == 'video') {
                 mediaType = MediaType.video;
-              } else if (type.startsWith('audio') ||
-                  (mediaContent.getAttribute('medium') == 'audio')) {
+                mediaUrl = url;
+              } else if (type.startsWith('audio') || medium == 'audio') {
                 mediaType = MediaType.audio;
-              } else if (type.startsWith('image') ||
-                  (mediaContent.getAttribute('medium') == 'image')) {
+                mediaUrl = url;
+              } else if (url != null &&
+                  (url.endsWith('.jpg') || url.endsWith('.png'))) {
                 mediaType = MediaType.image;
-              } else if (mediaUrl != null &&
-                  (mediaUrl.endsWith('.jpg') || mediaUrl.endsWith('.png'))) {
-                mediaType = MediaType.image;
+                imageUrl ??= url;
               }
             }
           }
 
           // Fallback check for images hidden in description HTML before we stripped it
-          if (mediaType == MediaType.text) {
+          if (mediaType == MediaType.text && imageUrl == null) {
             final rawDesc = _getElementText(item, 'description') ?? '';
             final imgMatch =
                 RegExp(r'<img[^>]+src="([^">]+)"').firstMatch(rawDesc);
             if (imgMatch != null) {
               mediaUrl = imgMatch.group(1);
+              imageUrl = imgMatch.group(1);
               mediaType = MediaType.image;
             }
           }
@@ -149,6 +153,7 @@ class RssService {
             link: link,
             mediaType: mediaType,
             mediaUrl: mediaUrl,
+            imageUrl: imageUrl,
             author: author,
             pubDate: pubDate,
             feedName: feedName,
