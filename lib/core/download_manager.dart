@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import '../features/feeds/data/models/downloaded_media.dart';
 import 'database/local_db.dart';
+import 'notification_service.dart';
 
 class DownloadManager {
   static final DownloadManager _instance = DownloadManager._internal();
@@ -11,6 +12,9 @@ class DownloadManager {
   DownloadManager._internal();
 
   bool _initialized = false;
+  int _totalDownloads = 0;
+  int _completedDownloads = 0;
+  final int _notificationId = 999;
 
   Future<void> init() async {
     if (_initialized) return;
@@ -37,7 +41,27 @@ class DownloadManager {
       }
     });
 
+    await notificationService.init();
+
     _initialized = true;
+  }
+
+  void _updateOverallNotification() {
+    if (_totalDownloads > 0) {
+      if (_completedDownloads < _totalDownloads) {
+        notificationService.showProgressNotification(
+          id: _notificationId,
+          title: 'Auto Downloads in Progress',
+          body: 'Downloaded $_completedDownloads of $_totalDownloads',
+          progress: _completedDownloads,
+          maxProgress: _totalDownloads,
+        );
+      } else {
+        notificationService.cancelNotification(_notificationId);
+        _totalDownloads = 0;
+        _completedDownloads = 0;
+      }
+    }
   }
 
   Future<void> _handleStatusUpdate(TaskStatusUpdate update) async {
@@ -48,10 +72,14 @@ class DownloadManager {
         download.status = 'completed';
         download.progress = 1.0;
         await download.save();
+        _completedDownloads++;
+        _updateOverallNotification();
       } else if (update.status == TaskStatus.failed ||
           update.status == TaskStatus.canceled) {
         download.status = 'failed';
         await download.save();
+        _completedDownloads++;
+        _updateOverallNotification();
       } else if (update.status == TaskStatus.paused) {
         download.status = 'paused';
         await download.save();
@@ -91,6 +119,7 @@ class DownloadManager {
 
     final filename = '${const Uuid().v4()}.$ext';
     final task = DownloadTask(
+      taskId: localDb.safeKey(url),
       url: url,
       filename: filename,
       updates: Updates.statusAndProgress,
@@ -113,6 +142,9 @@ class DownloadManager {
         );
     await localDb.saveDownload(media);
 
+    _totalDownloads++;
+    _updateOverallNotification();
+
     await FileDownloader().enqueue(task);
   }
 
@@ -127,6 +159,7 @@ class DownloadManager {
       } catch (e) {
         // Ignore file delete errors
       }
+      FileDownloader().cancelTasksWithIds([localDb.safeKey(url)]);
       await localDb.deleteDownload(url);
     }
   }

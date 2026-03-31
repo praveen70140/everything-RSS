@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/background_tasks.dart';
 import '../../../../main.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/database/local_db.dart';
@@ -198,6 +199,51 @@ class _AppSettingsPageState extends ConsumerState<AppSettingsPage> {
                 fontSize: 16,
               ),
             ),
+          ),
+          SizedBox(height: 32),
+          Text(
+            'Background Tasks',
+            style: GoogleFonts.epilogue(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppColors.text,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Manually trigger the auto-download service for feeds that have it enabled.',
+            style: GoogleFonts.manrope(
+              color: AppColors.subtext1,
+              fontSize: 14,
+            ),
+          ),
+          SizedBox(height: 16),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.surface0,
+              foregroundColor: AppColors.text,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            icon: Icon(Icons.download_for_offline, color: AppColors.blue),
+            label: Text(
+              'Trigger Auto-Downloads Now',
+              style: GoogleFonts.manrope(fontWeight: FontWeight.bold),
+            ),
+            onPressed: () async {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('Starting background downloads...')),
+              );
+              await BackgroundTasks.runAutoDownloads(checkTime: false);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Auto-downloads triggered')),
+                );
+              }
+            },
           ),
           SizedBox(height: 32),
           Text(

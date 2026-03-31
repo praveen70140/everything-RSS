@@ -24,7 +24,7 @@ class DownloadButton extends StatelessWidget {
     return ValueListenableBuilder<Box<DownloadedMedia>>(
       valueListenable: localDb.getDownloadsListenable(),
       builder: (context, box, child) {
-        final download = box.get(url);
+        final download = box.get(localDb.safeKey(url));
 
         if (download == null) {
           return IconButton(
@@ -45,11 +45,12 @@ class DownloadButton extends StatelessWidget {
                   color: AppColors.blue,
                 ),
                 IconButton(
-                  icon:
-                      Icon(Icons.pause, size: 16, color: AppColors.text),
+                  icon: Icon(Icons.pause, size: 16, color: AppColors.text),
                   onPressed: () {
                     // background_downloader pause task
-                    FileDownloader().taskForId(url).then((task) {
+                    FileDownloader()
+                        .taskForId(localDb.safeKey(url))
+                        .then((task) {
                       if (task is DownloadTask) FileDownloader().pause(task);
                     });
                   },
@@ -65,10 +66,11 @@ class DownloadButton extends StatelessWidget {
                   color: AppColors.overlay0,
                 ),
                 IconButton(
-                  icon: Icon(Icons.play_arrow,
-                      size: 16, color: AppColors.text),
+                  icon: Icon(Icons.play_arrow, size: 16, color: AppColors.text),
                   onPressed: () {
-                    FileDownloader().taskForId(url).then((task) {
+                    FileDownloader()
+                        .taskForId(localDb.safeKey(url))
+                        .then((task) {
                       if (task is DownloadTask) FileDownloader().resume(task);
                     });
                   },

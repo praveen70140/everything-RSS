@@ -209,30 +209,30 @@ class LocalDatabase {
   // --- Feed Cache ---
 
   Future<String?> getCachedFeedXml(String url) async {
-    return _feedXmlCacheBox.get(_safeKey(url));
+    return _feedXmlCacheBox.get(safeKey(url));
   }
 
   Future<void> saveCachedFeedXml(String url, String xml) async {
-    await _feedXmlCacheBox.put(_safeKey(url), xml);
+    await _feedXmlCacheBox.put(safeKey(url), xml);
   }
 
   // --- Downloads ---
 
-  String _safeKey(String key) {
+  String safeKey(String key) {
     if (key.length <= 200) return key;
     return md5.convert(utf8.encode(key)).toString();
   }
 
   Future<DownloadedMedia?> getDownload(String url) async {
-    return _downloadsBox.get(_safeKey(url));
+    return _downloadsBox.get(safeKey(url));
   }
 
   Future<void> saveDownload(DownloadedMedia media) async {
-    await _downloadsBox.put(_safeKey(media.url), media);
+    await _downloadsBox.put(safeKey(media.url), media);
   }
 
   Future<void> deleteDownload(String url) async {
-    await _downloadsBox.delete(_safeKey(url));
+    await _downloadsBox.delete(safeKey(url));
   }
 
   List<DownloadedMedia> getAllDownloads() {
@@ -282,11 +282,11 @@ class LocalDatabase {
   // --- Read Entries ---
 
   Future<void> markEntryAsRead(String entryId) async {
-    await _readEntriesBox.put(_safeKey(entryId), true);
+    await _readEntriesBox.put(safeKey(entryId), true);
   }
 
   bool isEntryRead(String entryId) {
-    return _readEntriesBox.get(_safeKey(entryId), defaultValue: false) ?? false;
+    return _readEntriesBox.get(safeKey(entryId), defaultValue: false) ?? false;
   }
 
   Set<String> getAllReadEntryIds() {

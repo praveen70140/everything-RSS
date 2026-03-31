@@ -1,11 +1,15 @@
 Analyzing Evreything-RSS...                                     
 
 warning • The URI 'package:flutter_lints/flutter.yaml' included in '/home/praveen/coding/Evreything-RSS/analysis_options.yaml' can't be found when analyzing '/home/praveen/coding/Evreything-RSS' • analysis_options.yaml:10:10 • include_file_not_found
-warning • The value of the local variable 'minute' isn't used • lib/core/background_tasks.dart:27:21 • unused_local_variable
-   info • 'isInDebugMode' is deprecated and shouldn't be used. Use WorkmanagerDebug handlers instead. This parameter has no effect • lib/core/background_tasks.dart:64:7 • deprecated_member_use
-   info • 'Share' is deprecated and shouldn't be used. Use SharePlus instead • lib/features/feeds/presentation/pages/app_settings_page.dart:84:15 • deprecated_member_use
-   info • 'shareXFiles' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead • lib/features/feeds/presentation/pages/app_settings_page.dart:84:21 • deprecated_member_use
-   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre • lib/features/feeds/presentation/pages/app_settings_page.dart:127:13 • deprecated_member_use
+  error • The named parameter 'settings' is required, but there's no corresponding argument • lib/core/notification_service.dart:27:43 • missing_required_argument
+  error • Too many positional arguments: 0 expected, but 1 found • lib/core/notification_service.dart:28:7 • extra_positional_arguments_could_be_named
+  error • The named parameter 'id' is required, but there's no corresponding argument • lib/core/notification_service.dart:64:43 • missing_required_argument
+  error • Too many positional arguments: 0 expected, but 4 found • lib/core/notification_service.dart:65:7 • extra_positional_arguments_could_be_named
+  error • The named parameter 'id' is required, but there's no corresponding argument • lib/core/notification_service.dart:73:43 • missing_required_argument
+  error • Too many positional arguments: 0 expected, but 1 found • lib/core/notification_service.dart:73:50 • extra_positional_arguments_could_be_named
+   info • 'Share' is deprecated and shouldn't be used. Use SharePlus instead • lib/features/feeds/presentation/pages/app_settings_page.dart:85:15 • deprecated_member_use
+   info • 'shareXFiles' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead • lib/features/feeds/presentation/pages/app_settings_page.dart:85:21 • deprecated_member_use
+   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre • lib/features/feeds/presentation/pages/app_settings_page.dart:128:13 • deprecated_member_use
    info • 'Share' is deprecated and shouldn't be used. Use SharePlus instead • lib/features/feeds/presentation/pages/article_detail_page.dart:266:15 • deprecated_member_use
    info • 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead • lib/features/feeds/presentation/pages/article_detail_page.dart:266:21 • deprecated_member_use
 warning • Unused import: '../../../../core/database/local_db.dart' • lib/features/feeds/presentation/pages/feed_settings_page.dart:2:8 • unused_import
