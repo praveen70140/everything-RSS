@@ -8,6 +8,7 @@ import 'package:simple_pip_mode/simple_pip.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/media/media_provider.dart';
 import '../../../../../core/database/local_db.dart';
+import '../../../../../core/media/sponsor_block_service.dart';
 import 'download_button.dart';
 
 class VideoCard extends ConsumerStatefulWidget {
@@ -29,6 +30,50 @@ class _VideoCardState extends ConsumerState<VideoCard> {
   ChewieController? _chewieController;
   bool _isPlayerActive = false;
   bool _isLoading = false;
+  List<SponsorSegment> _sponsorSegments = [];
+  bool _isSkipping = false;
+
+  String? _extractVideoId(String url) {
+    try {
+      final uri = Uri.parse(url);
+      final pathSegments = uri.pathSegments;
+      if (pathSegments.contains('stream')) {
+        final index = pathSegments.indexOf('stream');
+        if (index + 1 < pathSegments.length) {
+          return pathSegments[index + 1];
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  void _videoListener() {
+    if (_videoPlayerController == null || _isSkipping) return;
+
+    final currentPosition =
+        _videoPlayerController!.value.position.inSeconds.toDouble();
+
+    for (final segment in _sponsorSegments) {
+      if (currentPosition >= segment.start && currentPosition < segment.end) {
+        _isSkipping = true;
+        _videoPlayerController!
+            .seekTo(Duration(seconds: segment.end.toInt() + 1))
+            .then((_) {
+          _isSkipping = false;
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Skipped ${segment.category} segment'),
+                duration: const Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        });
+        break;
+      }
+    }
+  }
 
   Future<void> _initializePlayer() async {
     setState(() {
@@ -51,7 +96,14 @@ class _VideoCardState extends ConsumerState<VideoCard> {
     }
 
     try {
+      final videoId = _extractVideoId(widget.videoUrl);
+      if (videoId != null) {
+        _sponsorSegments = await SponsorBlockService.getSegments(videoId);
+      }
+
       await _videoPlayerController!.initialize();
+      _videoPlayerController!.addListener(_videoListener);
+
       _chewieController = ChewieController(
         videoPlayerController: _videoPlayerController!,
         autoPlay: true,
@@ -120,6 +172,7 @@ class _VideoCardState extends ConsumerState<VideoCard> {
   void dispose() {
     final pipController = ref.read(pipVideoProvider);
     if (pipController != _videoPlayerController) {
+      _videoPlayerController?.removeListener(_videoListener);
       _videoPlayerController?.dispose();
     }
     _chewieController?.dispose();
@@ -146,8 +199,7 @@ class _VideoCardState extends ConsumerState<VideoCard> {
                             top: 16,
                             right: 16,
                             child: IconButton(
-                              icon: Icon(
-                                  Icons.picture_in_picture_alt_rounded,
+                              icon: Icon(Icons.picture_in_picture_alt_rounded,
                                   color: Colors.white),
                               onPressed: _enterPipMode,
                               tooltip: 'Picture in Picture',
