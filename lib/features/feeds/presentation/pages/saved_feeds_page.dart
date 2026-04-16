@@ -9,6 +9,7 @@ import '../widgets/content_cards/video_card.dart';
 import '../widgets/content_cards/article_tile.dart';
 import '../widgets/content_cards/audio_tile.dart';
 import '../widgets/content_cards/dense_article_tile.dart';
+import '../widgets/feedback/empty_state.dart';
 
 class SavedFeedsPage extends StatefulWidget {
   final String? feedUrl;
@@ -47,12 +48,39 @@ class _SavedFeedsPageState extends State<SavedFeedsPage> {
     }
   }
 
-  Future<void> _removeEntry(String entryId) async {
-    await localDb.deleteFeedEntry(entryId);
-    _loadEntries();
+  Future<void> _removeEntry(SavedFeedEntry entry, int index) async {
+    setState(() {
+      _entries.removeWhere((item) => item.entryId == entry.entryId);
+    });
+
+    final label = widget.status == 'archive' ? 'Archive' : 'To do';
+    ScaffoldMessenger.of(context).clearSnackBars();
+    final reason = await ScaffoldMessenger.of(context)
+        .showSnackBar(
+          SnackBar(
+            content: Text('Removed from $label'),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'UNDO',
+              textColor: AppColors.blue,
+              onPressed: () {
+                setState(() {
+                  final safeIndex = index.clamp(0, _entries.length);
+                  _entries.insert(safeIndex, entry);
+                });
+              },
+            ),
+          ),
+        )
+        .closed;
+
+    if (reason != SnackBarClosedReason.action) {
+      await localDb.deleteFeedEntry(entry.entryId);
+    }
   }
 
-  Widget _buildContentItem(SavedFeedEntry entry, bool isDense) {
+  Widget _buildContentItem(SavedFeedEntry entry, bool isDense, int index) {
     // Map string enum back to MediaType
     MediaType mediaType = MediaType.text;
     if (entry.mediaType == 'MediaType.video') mediaType = MediaType.video;
@@ -87,7 +115,6 @@ class _SavedFeedsPageState extends State<SavedFeedsPage> {
         }
         break;
       case MediaType.text:
-      default:
         if (isDense) {
           child =
               DenseArticleTile(title: entry.title, subtitle: entry.subtitle);
@@ -100,7 +127,7 @@ class _SavedFeedsPageState extends State<SavedFeedsPage> {
     return Dismissible(
       key: Key(entry.entryId),
       direction: DismissDirection.horizontal,
-      onDismissed: (_) => _removeEntry(entry.entryId),
+      onDismissed: (_) => _removeEntry(entry, index),
       background: Container(
         color: AppColors.red,
         alignment: Alignment.centerLeft,
@@ -119,16 +146,18 @@ class _SavedFeedsPageState extends State<SavedFeedsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final titlePrefix = widget.status == 'archive' ? 'ARCHIVE:' : 'TODO:';
+    final titlePrefix = widget.status == 'archive' ? 'Archive' : 'To do';
 
     return Scaffold(
+      backgroundColor: AppColors.base,
       appBar: AppBar(
+        backgroundColor: AppColors.base,
         title: Text(
-          '$titlePrefix ${widget.feedName}'.toUpperCase(),
+          '$titlePrefix: ${widget.feedName}',
           style: GoogleFonts.epilogue(
             fontWeight: FontWeight.w900,
             fontSize: 14,
-            letterSpacing: -0.5,
+            letterSpacing: -0.2,
           ),
         ),
         bottom: PreferredSize(
@@ -148,11 +177,13 @@ class _SavedFeedsPageState extends State<SavedFeedsPage> {
     }
 
     if (_entries.isEmpty) {
-      return Center(
-        child: Text(
-          'No saved items here.',
-          style: TextStyle(color: AppColors.subtext1, fontSize: 16),
-        ),
+      final isArchive = widget.status == 'archive';
+      return EmptyState(
+        icon: isArchive ? Icons.archive_outlined : Icons.watch_later_outlined,
+        title: isArchive ? 'Archive is empty' : 'Nothing saved for later',
+        message: isArchive
+            ? 'Swipe feed items left to move them into the archive.'
+            : 'Swipe feed items right to save them for later.',
       );
     }
 
@@ -163,7 +194,7 @@ class _SavedFeedsPageState extends State<SavedFeedsPage> {
       itemBuilder: (context, index) {
         final entry = _entries[index];
         final isDense = index > 5 && entry.mediaType == 'MediaType.text';
-        return _buildContentItem(entry, isDense);
+        return _buildContentItem(entry, isDense, index);
       },
     );
   }

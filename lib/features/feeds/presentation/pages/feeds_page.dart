@@ -10,6 +10,8 @@ import '../widgets/content_cards/video_card.dart';
 import '../widgets/content_cards/article_tile.dart';
 import '../widgets/content_cards/audio_tile.dart';
 import '../widgets/content_cards/dense_article_tile.dart';
+import '../widgets/feedback/empty_state.dart';
+import '../widgets/feedback/error_state.dart';
 import '../widgets/skeleton/skeleton_feed_list.dart';
 import '../providers/feeds_provider.dart';
 import '../../../../core/database/local_db.dart';
@@ -64,7 +66,7 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
         .showSnackBar(
           SnackBar(
             content:
-                Text('Moved to ${status == 'archive' ? 'Archive' : 'To-Do'}'),
+                Text('Moved to ${status == 'archive' ? 'Archive' : 'To do'}'),
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 4),
             action: SnackBarAction(
@@ -140,7 +142,6 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
         }
         break;
       case MediaType.text:
-      default:
         break;
     }
 
@@ -198,7 +199,7 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
     final feedsStateAsync = ref.watch(feedsProvider);
     final isMediaPlaying = ref.watch(mediaStateProvider).mediaItem != null;
 
-    final feedName = feedsStateAsync.value?.currentFeedName ?? 'ALL FEEDS';
+    final feedName = feedsStateAsync.value?.currentFeedName ?? 'All Feeds';
     final currentFeedUrl = feedsStateAsync.value?.currentFeedUrl;
 
     return Scaffold(
@@ -208,19 +209,19 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
           style: GoogleFonts.epilogue(
             fontWeight: FontWeight.w900,
             fontSize: 16,
-            letterSpacing: -0.5,
+            letterSpacing: -0.2,
           ),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.done_all),
+            icon: const Icon(Icons.done_all, size: 22),
             onPressed: () {
               ref.read(feedsProvider.notifier).markAllAsRead();
             },
             tooltip: 'Mark All As Read',
           ),
           IconButton(
-            icon: Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, size: 22),
             onPressed: () {
               ref
                   .read(feedsProvider.notifier)
@@ -245,46 +246,39 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
       body: feedsStateAsync.when(
         data: (state) => _buildBody(state, isMediaPlaying),
         loading: () => const SkeletonFeedList(),
-        error: (error, stack) => _buildError(error.toString()),
+        error: (error, stack) => _buildError(error.toString(), currentFeedUrl),
       ),
     );
   }
 
-  Widget _buildError(String error) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, color: AppColors.red, size: 48),
-            SizedBox(height: 16),
-            Text(
-              'Failed to load feed',
-              style: GoogleFonts.epilogue(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.text),
-            ),
-            SizedBox(height: 8),
-            Text(
-              error,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.subtext1),
-            ),
-          ],
-        ),
-      ),
+  Widget _buildError(String error, String? currentFeedUrl) {
+    return ErrorState(
+      title: 'Feed could not load',
+      message: 'Check the feed URL or try refreshing. If hosting your own RSSHub or yt-dlp-RSS instance, verify the container is running.',
+      actionLabel: 'Try again',
+      onAction: () {
+        ref
+            .read(feedsProvider.notifier)
+            .loadFeed(currentFeedUrl, forceRefresh: true);
+        setState(() => _visibleLimit = 20);
+      },
+      details: error,
     );
+  }
+
+  Future<void> _refreshFeed(String? url) async {
+    await ref.read(feedsProvider.notifier).loadFeed(url, forceRefresh: true);
+    setState(() => _visibleLimit = 20);
   }
 
   Widget _buildBody(FeedsState state, bool isMediaPlaying) {
     if (state.entries.isEmpty) {
-      return Center(
-        child: Text(
-          'No items found in feed.',
-          style: TextStyle(color: AppColors.subtext1, fontSize: 16),
-        ),
+      return EmptyState(
+        icon: Icons.rss_feed,
+        title: 'No items here',
+        message: 'Refresh this feed or choose another source from the drawer. Use "Discover" if you have a source server configured.',
+        actionLabel: 'Refresh',
+        onAction: () => _refreshFeed(state.currentFeedUrl),
       );
     }
 
@@ -294,10 +288,7 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
 
     return RefreshIndicator(
       onRefresh: () async {
-        await ref
-            .read(feedsProvider.notifier)
-            .loadFeed(state.currentFeedUrl, forceRefresh: true);
-        setState(() => _visibleLimit = 20);
+        await _refreshFeed(state.currentFeedUrl);
       },
       color: AppColors.blue,
       backgroundColor: AppColors.surface0,
@@ -313,7 +304,7 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
         itemBuilder: (context, index) {
           if (index == _visibleLimit) {
             return Padding(
-              padding: EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(24.0),
               child: Center(
                 child: CircularProgressIndicator(color: AppColors.blue),
               ),
@@ -338,11 +329,11 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
               color: AppColors.green,
               alignment: Alignment.centerLeft,
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
+              child: const Row(
                 children: [
                   Icon(Icons.check_circle, color: Colors.white),
                   SizedBox(width: 8),
-                  Text('TO-DO',
+                  Text('To do',
                       style: TextStyle(
                           color: Colors.white, fontWeight: FontWeight.bold)),
                 ],
@@ -352,10 +343,10 @@ class _FeedsPageState extends ConsumerState<FeedsPage> {
               color: AppColors.mauve,
               alignment: Alignment.centerRight,
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
+              child: const Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Text('ARCHIVE',
+                  Text('Archive',
                       style: TextStyle(
                           color: Colors.white, fontWeight: FontWeight.bold)),
                   SizedBox(width: 8),

@@ -10,6 +10,7 @@ import '../../../../main.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/database/local_db.dart';
 import '../../data/repositories/opml_service.dart';
+import '../utils/url_validation.dart';
 
 class AppSettingsPage extends ConsumerStatefulWidget {
   const AppSettingsPage({super.key});
@@ -35,14 +36,24 @@ class _AppSettingsPageState extends ConsumerState<AppSettingsPage> {
   }
 
   Future<void> _saveSettings() async {
-    final url = _mercuryUrlController.text.trim();
-    if (url.isNotEmpty) {
-      await localDb.setMercuryParserUrl(url);
+    final validation = validateHttpUrl(_mercuryUrlController.text);
+    if (!validation.isValid) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Settings saved')),
+          SnackBar(content: Text(validation.message!)),
         );
       }
+      return;
+    }
+
+    await localDb.setMercuryParserUrl(validation.normalizedUrl!);
+    _mercuryUrlController.text = validation.normalizedUrl!;
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Mercury Parser URL saved.'),
+        ),
+      );
     }
   }
 
@@ -82,10 +93,12 @@ class _AppSettingsPageState extends ConsumerState<AppSettingsPage> {
 
       if (mounted) {
         final box = context.findRenderObject() as RenderBox?;
-        await Share.shareXFiles(
-          [XFile(file.path)],
-          text: 'My RSS Feeds OPML Export',
-          sharePositionOrigin: box!.localToGlobal(Offset.zero) & box.size,
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(file.path)],
+            text: 'My RSS Feeds OPML Export',
+            sharePositionOrigin: box!.localToGlobal(Offset.zero) & box.size,
+          ),
         );
       }
     } catch (e) {
@@ -102,52 +115,43 @@ class _AppSettingsPageState extends ConsumerState<AppSettingsPage> {
     final isDark = ref.watch(themeProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.crust,
+      backgroundColor: AppColors.base,
       appBar: AppBar(
-        backgroundColor: AppColors.crust,
+        backgroundColor: AppColors.base,
+        elevation: 0,
         title: Text(
           'App Settings',
           style: GoogleFonts.manrope(fontWeight: FontWeight.bold),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1.0),
+          child: Container(color: AppColors.surface1, height: 1.0),
         ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(24.0),
         children: [
-          Text(
-            'Appearance',
-            style: GoogleFonts.epilogue(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.text,
-            ),
-          ),
-          SizedBox(height: 16),
+          _buildSectionHeader('Appearance'),
           SwitchListTile(
-            title: Text('Dark Mode', style: TextStyle(color: AppColors.text)),
+            title: Text('Dark Mode', style: TextStyle(color: AppColors.text, fontWeight: FontWeight.w600)),
+            subtitle: Text('Toggle Catppuccin Mocha/Latte themes', style: TextStyle(color: AppColors.subtext1, fontSize: 12)),
             value: isDark,
             activeColor: AppColors.blue,
             onChanged: (value) {
               ref.read(themeProvider.notifier).toggleTheme();
             },
           ),
-          SizedBox(height: 32),
+          const SizedBox(height: 32),
+          _buildSectionHeader('Mercury Parser (Full-text)'),
+          const SizedBox(height: 8),
           Text(
-            'Reader Mode',
-            style: GoogleFonts.epilogue(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.text,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Configure the URL for the Mercury Parser API used to extract full article text.',
+            'Connect a self-hosted Mercury Parser instance to extract full article content from abbreviated RSS feeds.',
             style: GoogleFonts.manrope(
               color: AppColors.subtext1,
               fontSize: 14,
             ),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           TextField(
             controller: _mercuryUrlController,
             style: TextStyle(color: AppColors.text),
@@ -157,7 +161,7 @@ class _AppSettingsPageState extends ConsumerState<AppSettingsPage> {
               hintText: 'http://10.0.2.2:3000',
               hintStyle: TextStyle(color: AppColors.overlay0),
               filled: true,
-              fillColor: AppColors.base,
+              fillColor: AppColors.crust,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(color: AppColors.surface1),
@@ -173,7 +177,7 @@ class _AppSettingsPageState extends ConsumerState<AppSettingsPage> {
             ),
             keyboardType: TextInputType.url,
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
             'Tip: Use http://10.0.2.2:3000 for local Docker on Android emulator.',
             style: GoogleFonts.manrope(
@@ -181,7 +185,7 @@ class _AppSettingsPageState extends ConsumerState<AppSettingsPage> {
               fontSize: 12,
             ),
           ),
-          SizedBox(height: 24),
+          const SizedBox(height: 24),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.blue,
@@ -193,31 +197,24 @@ class _AppSettingsPageState extends ConsumerState<AppSettingsPage> {
             ),
             onPressed: _saveSettings,
             child: Text(
-              'Save Settings',
+              'Save Mercury Server',
               style: GoogleFonts.manrope(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
               ),
             ),
           ),
-          SizedBox(height: 32),
+          const SizedBox(height: 32),
+          _buildSectionHeader('Background Tasks'),
+          const SizedBox(height: 8),
           Text(
-            'Background Tasks',
-            style: GoogleFonts.epilogue(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.text,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Manually trigger the auto-download service for feeds that have it enabled.',
+            'Trigger the auto-download service to fetch content for offline access.',
             style: GoogleFonts.manrope(
               color: AppColors.subtext1,
               fontSize: 14,
             ),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.surface0,
@@ -229,7 +226,7 @@ class _AppSettingsPageState extends ConsumerState<AppSettingsPage> {
             ),
             icon: Icon(Icons.download_for_offline, color: AppColors.blue),
             label: Text(
-              'Trigger Auto-Downloads Now',
+              'Trigger Auto-Downloads',
               style: GoogleFonts.manrope(fontWeight: FontWeight.bold),
             ),
             onPressed: () async {
@@ -245,30 +242,23 @@ class _AppSettingsPageState extends ConsumerState<AppSettingsPage> {
               }
             },
           ),
-          SizedBox(height: 32),
+          const SizedBox(height: 32),
+          _buildSectionHeader('Subscription Management (OPML)'),
+          const SizedBox(height: 8),
           Text(
-            'Feed Management',
-            style: GoogleFonts.epilogue(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.text,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Import or export your subscriptions using OPML files.',
+            'Import or export your subscriptions using standard OPML files.',
             style: GoogleFonts.manrope(
               color: AppColors.subtext1,
               fontSize: 14,
             ),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  icon: Icon(Icons.file_upload),
-                  label: Text('Import OPML'),
+                  icon: const Icon(Icons.file_upload),
+                  label: const Text('Import'),
                   onPressed: _importOpml,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.text,
@@ -277,11 +267,11 @@ class _AppSettingsPageState extends ConsumerState<AppSettingsPage> {
                   ),
                 ),
               ),
-              SizedBox(width: 16),
+              const SizedBox(width: 16),
               Expanded(
                 child: OutlinedButton.icon(
-                  icon: Icon(Icons.file_download),
-                  label: Text('Export OPML'),
+                  icon: const Icon(Icons.file_download),
+                  label: const Text('Export'),
                   onPressed: _exportOpml,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.text,
@@ -293,6 +283,17 @@ class _AppSettingsPageState extends ConsumerState<AppSettingsPage> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: GoogleFonts.epilogue(
+        fontSize: 18,
+        fontWeight: FontWeight.w800,
+        color: AppColors.text,
       ),
     );
   }

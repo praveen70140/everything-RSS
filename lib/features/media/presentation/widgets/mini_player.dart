@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../../core/media/media_provider.dart';
 import '../../../../core/media/global_video_player_provider.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../pages/full_screen_player.dart';
 import '../pages/full_screen_video_player.dart';
 
@@ -40,16 +41,17 @@ class MiniPlayer extends ConsumerWidget {
       },
       child: Container(
         height: 72,
-        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        margin: const EdgeInsets.fromLTRB(8, 0, 8, 12),
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(12),
+          color: AppColors.mantle,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.surface0),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 15,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
@@ -60,17 +62,20 @@ class MiniPlayer extends ConsumerWidget {
               child: videoState.imageUrl != null
                   ? CachedNetworkImage(
                       imageUrl: videoState.imageUrl!,
-                      width: 48,
-                      height: 48,
+                      width: 44,
+                      height: 44,
                       fit: BoxFit.cover,
-                      errorWidget: (context, url, error) =>
-                          const Icon(Icons.video_library, size: 32),
+                      errorWidget: (context, url, error) => Icon(
+                          Icons.video_library,
+                          size: 28,
+                          color: AppColors.subtext1),
                     )
                   : Container(
-                      width: 48,
-                      height: 48,
-                      color: Colors.grey[800],
-                      child: const Icon(Icons.video_library, color: Colors.white54),
+                      width: 44,
+                      height: 44,
+                      color: AppColors.crust,
+                      child:
+                          Icon(Icons.video_library, color: AppColors.subtext1, size: 24),
                     ),
             ),
             const SizedBox(width: 12),
@@ -83,7 +88,11 @@ class MiniPlayer extends ConsumerWidget {
                     videoState.title ?? 'Unknown Video',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    style: TextStyle(
+                      color: AppColors.text,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                   ),
                   if (videoState.author != null) ...[
                     const SizedBox(height: 2),
@@ -91,7 +100,7 @@ class MiniPlayer extends ConsumerWidget {
                       videoState.author!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                      style: TextStyle(color: AppColors.subtext1, fontSize: 12),
                     ),
                   ],
                 ],
@@ -111,12 +120,16 @@ class MiniPlayer extends ConsumerWidget {
                     ? Icons.pause_rounded
                     : Icons.play_arrow_rounded),
                 iconSize: 32,
+                color: AppColors.text,
+                tooltip: videoState.isPlaying ? 'Pause' : 'Play',
                 onPressed: () {
                   ref.read(globalVideoProvider.notifier).togglePlay();
                 },
               ),
             IconButton(
-              icon: const Icon(Icons.close_rounded),
+              icon: const Icon(Icons.close_rounded, size: 20),
+              color: AppColors.overlay0,
+              tooltip: 'Close player',
               onPressed: () => ref.read(globalVideoProvider.notifier).stop(),
             ),
           ],
@@ -141,16 +154,17 @@ class MiniPlayer extends ConsumerWidget {
       },
       child: Container(
         height: 72,
-        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        margin: const EdgeInsets.fromLTRB(8, 0, 8, 12),
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(12),
+          color: AppColors.mantle,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.surface0),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 15,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
@@ -161,17 +175,19 @@ class MiniPlayer extends ConsumerWidget {
               child: mediaItem!.artUri != null
                   ? CachedNetworkImage(
                       imageUrl: mediaItem.artUri.toString(),
-                      width: 48,
-                      height: 48,
+                      width: 44,
+                      height: 44,
                       fit: BoxFit.cover,
-                      errorWidget: (context, url, error) =>
-                          const Icon(Icons.music_note, size: 32),
+                      errorWidget: (context, url, error) => Icon(
+                          Icons.music_note,
+                          size: 28,
+                          color: AppColors.subtext1),
                     )
                   : Container(
-                      width: 48,
-                      height: 48,
-                      color: Colors.grey[800],
-                      child: const Icon(Icons.music_note, color: Colors.white54),
+                      width: 44,
+                      height: 44,
+                      color: AppColors.crust,
+                      child: Icon(Icons.music_note, color: AppColors.subtext1, size: 24),
                     ),
             ),
             const SizedBox(width: 12),
@@ -184,7 +200,11 @@ class MiniPlayer extends ConsumerWidget {
                     mediaItem.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    style: TextStyle(
+                      color: AppColors.text,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                   ),
                   if (mediaItem.album != null) ...[
                     const SizedBox(height: 2),
@@ -192,7 +212,7 @@ class MiniPlayer extends ConsumerWidget {
                       mediaItem.album!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                      style: TextStyle(color: AppColors.subtext1, fontSize: 12),
                     ),
                   ],
                 ],
@@ -212,6 +232,8 @@ class MiniPlayer extends ConsumerWidget {
                     ? Icons.pause_rounded
                     : Icons.play_arrow_rounded),
                 iconSize: 32,
+                color: AppColors.text,
+                tooltip: mediaState.isPlaying ? 'Pause' : 'Play',
                 onPressed: () {
                   final notifier = ref.read(mediaStateProvider.notifier);
                   if (mediaState.isPlaying) {
@@ -222,7 +244,9 @@ class MiniPlayer extends ConsumerWidget {
                 },
               ),
             IconButton(
-              icon: const Icon(Icons.close_rounded),
+              icon: const Icon(Icons.close_rounded, size: 20),
+              color: AppColors.overlay0,
+              tooltip: 'Close player',
               onPressed: () => ref.read(mediaStateProvider.notifier).stop(),
             ),
           ],

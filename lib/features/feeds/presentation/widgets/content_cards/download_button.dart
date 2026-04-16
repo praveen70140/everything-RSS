@@ -86,7 +86,8 @@ class DownloadButton extends StatelessWidget {
                   context: context,
                   builder: (context) => AlertDialog(
                     title: Text('Delete Download'),
-                    content: Text('Remove this downloaded file?'),
+                    content: Text(
+                        'Remove the local downloaded file? The feed item stays in your list.'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),

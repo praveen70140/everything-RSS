@@ -1,11 +1,10 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/media/global_video_player_provider.dart';
 import 'download_button.dart';
+import 'feed_card_styles.dart';
 
 class VideoCard extends ConsumerWidget {
   final String videoUrl;
@@ -55,14 +54,14 @@ class VideoCard extends ConsumerWidget {
                     Container(color: AppColors.surface0),
 
                   // Dark Overlay
-                  Container(color: Colors.black.withOpacity(0.2)),
+                  Container(color: Colors.black.withValues(alpha: 0.2)),
 
                   Center(
                     child: Container(
                       width: 64,
                       height: 64,
                       decoration: BoxDecoration(
-                        color: AppColors.blue.withOpacity(0.9),
+                        color: AppColors.blue.withValues(alpha: 0.9),
                         shape: BoxShape.circle,
                         boxShadow: const [
                           BoxShadow(
@@ -85,20 +84,14 @@ class VideoCard extends ConsumerWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+          padding: FeedCardStyles.mediaTextPadding,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Text(
                   title,
-                  style: GoogleFonts.epilogue(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.text,
-                    letterSpacing: -1,
-                    height: 1.1,
-                  ),
+                  style: FeedCardStyles.title(isRead: false),
                 ),
               ),
               SizedBox(width: 8),

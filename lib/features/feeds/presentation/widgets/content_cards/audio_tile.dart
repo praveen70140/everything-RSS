@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/media/media_provider.dart';
 import 'download_button.dart';
+import 'feed_card_styles.dart';
 
 class AudioTile extends ConsumerWidget {
   final String audioUrl;
@@ -27,7 +28,7 @@ class AudioTile extends ConsumerWidget {
     final isPlaying = isThisAudioPlaying && mediaState.isPlaying;
     final isLoading = isThisAudioPlaying && mediaState.isBuffering;
 
-    void _togglePlay() {
+    void togglePlay() {
       final notifier = ref.read(mediaStateProvider.notifier);
 
       if (isThisAudioPlaying) {
@@ -47,9 +48,9 @@ class AudioTile extends ConsumerWidget {
     }
 
     return InkWell(
-      onTap: isLoading ? null : _togglePlay,
+      onTap: isLoading ? null : togglePlay,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+        padding: FeedCardStyles.mediaTextPadding,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -60,37 +61,38 @@ class AudioTile extends ConsumerWidget {
                   Text(
                     title,
                     style: GoogleFonts.manrope(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                      fontSize: FeedCardStyles.denseTitleSize,
+                      fontWeight: FontWeight.w800,
                       color:
                           isThisAudioPlaying ? AppColors.blue : AppColors.text,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
                     author,
                     style: GoogleFonts.manrope(
                       fontSize: 14,
-                      color: Colors.grey[500],
+                      color: AppColors.subtext1,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
               ),
             ),
-            SizedBox(width: 16),
+            const SizedBox(width: 16),
             DownloadButton(
               url: audioUrl,
               title: title,
               mediaType: 'audio',
             ),
-            SizedBox(width: 16),
+            const SizedBox(width: 16),
             if (isLoading)
               SizedBox(
-                width: 28,
-                height: 28,
+                width: 32,
+                height: 32,
                 child: CircularProgressIndicator(
                   color: AppColors.blue,
-                  strokeWidth: 2,
+                  strokeWidth: 2.5,
                 ),
               )
             else if (isThisAudioPlaying)
@@ -99,13 +101,13 @@ class AudioTile extends ConsumerWidget {
                     ? Icons.pause_circle_filled
                     : Icons.play_circle_filled,
                 color: AppColors.blue,
-                size: 36,
+                size: 40,
               )
             else
               Icon(
                 Icons.play_circle_outline,
-                color: Colors.grey,
-                size: 36,
+                color: AppColors.overlay0,
+                size: 40,
               ),
           ],
         ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../../../../../core/theme/app_colors.dart';
+import 'feed_card_styles.dart';
 
 class DenseArticleTile extends StatelessWidget {
   final String title;
@@ -26,7 +26,7 @@ class DenseArticleTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 24.0),
+        padding: FeedCardStyles.articlePadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -36,15 +36,10 @@ class DenseArticleTile extends StatelessWidget {
                   if (author != null)
                     Expanded(
                       child: Text(
-                        author!.toUpperCase(),
+                        author!,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.manrope(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.blue,
-                          letterSpacing: 0.5,
-                        ),
+                        style: FeedCardStyles.metadata(color: AppColors.blue),
                       ),
                     ),
                   if (author != null && pubDate != null)
@@ -52,38 +47,28 @@ class DenseArticleTile extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 6.0),
                       child: Text('•',
                           style: TextStyle(
-                              color: AppColors.overlay0, fontSize: 10)),
+                              color: AppColors.overlay0,
+                              fontSize: FeedCardStyles.metadataSize)),
                     ),
                   if (pubDate != null)
                     Text(
                       timeago.format(pubDate!),
-                      style: GoogleFonts.manrope(
-                        fontSize: 10,
-                        color: AppColors.overlay0,
-                      ),
+                      style: FeedCardStyles.metadata(color: AppColors.overlay0),
                     ),
                 ],
               ),
-              SizedBox(height: 6),
+              const SizedBox(height: 8),
             ],
             Text(
               title,
-              style: GoogleFonts.manrope(
-                fontSize: 20,
-                fontWeight: isRead ? FontWeight.w600 : FontWeight.bold,
-                color: isRead ? AppColors.subtext1 : AppColors.text,
-                height: 1.2,
-              ),
+              style: FeedCardStyles.denseTitle(isRead: isRead),
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 6),
             Text(
               subtitle,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.manrope(
-                fontSize: 14,
-                color: isRead ? AppColors.overlay0 : AppColors.subtext1,
-              ),
+              style: FeedCardStyles.subtitle(isRead: isRead),
             ),
           ],
         ),

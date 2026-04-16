@@ -79,6 +79,7 @@ class AppAudioHandler extends BaseAudioHandler with SeekHandler {
   @override
   Future<void> stop() async {
     await _player.stop();
+    mediaItem.add(null);
     return super.stop();
   }
 

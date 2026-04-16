@@ -146,7 +146,7 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Typography & Accessibility',
+                    'Reading settings',
                     style: GoogleFonts.epilogue(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -263,7 +263,10 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
             icon: Icon(Icons.share),
             tooltip: 'Share',
             onPressed: () {
-              Share.share('${currentEntry.title}\n${currentEntry.link}');
+              SharePlus.instance.share(
+                ShareParams(
+                    text: '${currentEntry.title}\n${currentEntry.link}'),
+              );
             },
           ),
           IconButton(
@@ -374,11 +377,10 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.error_outline,
-                        color: AppColors.red, size: 48),
+                    Icon(Icons.error_outline, color: AppColors.red, size: 48),
                     SizedBox(height: 16),
                     Text(
-                      'Reader Mode Error',
+                      'Full text unavailable',
                       style: GoogleFonts.epilogue(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -387,19 +389,36 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      _readerModeError!,
+                      'The extraction server could not fetch this article. You can continue with the RSS summary or open the original page.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: AppColors.subtext1),
                     ),
                     SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _isReaderMode = false;
-                          _readerModeError = null;
-                        });
-                      },
-                      child: Text('Back to Normal View'),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        OutlinedButton(
+                          onPressed: () {
+                            setState(() {
+                              _isReaderMode = false;
+                              _readerModeError = null;
+                            });
+                          },
+                          child: Text('Show summary'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () async {
+                            final url = Uri.parse(currentEntry.link);
+                            await launchUrl(
+                              url,
+                              mode: LaunchMode.externalApplication,
+                            );
+                          },
+                          child: Text('Open original'),
+                        ),
+                      ],
                     )
                   ],
                 ),
@@ -419,7 +438,7 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
                     SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Showing RSS summary. Tap the article icon above to fetch the full text.',
+                        'Showing RSS summary. Use Reader Mode for full text.',
                         style: GoogleFonts.manrope(
                           color: AppColors.subtext1,
                           fontSize: 14,

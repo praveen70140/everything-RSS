@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../../../../../core/theme/app_colors.dart';
+import 'feed_card_styles.dart';
 
 class PhotoCard extends StatelessWidget {
   final String imageUrl;
@@ -33,19 +33,18 @@ class PhotoCard extends StatelessWidget {
           AspectRatio(
             aspectRatio: 16 / 9,
             child: Container(
-              color: AppColors.surface0,
+              color: AppColors.crust,
               child: Image.network(
                 imageUrl,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
-                  return Center(child: Icon(Icons.error));
+                  return Center(child: Icon(Icons.broken_image, color: AppColors.surface1));
                 },
               ),
             ),
           ),
           Padding(
-            padding:
-                const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+            padding: FeedCardStyles.mediaTextPadding,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -55,22 +54,17 @@ class PhotoCard extends StatelessWidget {
                       if (author != null && author!.isNotEmpty)
                         Expanded(
                           child: Text(
-                            author!.toUpperCase(),
+                            author!,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.manrope(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.blue,
-                              letterSpacing: 0.5,
-                            ),
+                            style: FeedCardStyles.metadata(color: AppColors.blue),
                           ),
                         ),
                       if (author != null &&
                           author!.isNotEmpty &&
                           pubDate != null)
                         Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8.0),
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
                           child: Text('•',
                               style: TextStyle(
                                   color: AppColors.overlay0, fontSize: 12)),
@@ -78,36 +72,23 @@ class PhotoCard extends StatelessWidget {
                       if (pubDate != null)
                         Text(
                           timeago.format(pubDate!),
-                          style: GoogleFonts.manrope(
-                            fontSize: 12,
-                            color: AppColors.overlay0,
-                          ),
+                          style: FeedCardStyles.metadata(color: AppColors.overlay0),
                         ),
                     ],
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 10),
                 ],
                 Text(
                   title,
-                  style: GoogleFonts.epilogue(
-                    fontSize: 24,
-                    fontWeight: isRead ? FontWeight.w600 : FontWeight.w900,
-                    color: isRead ? AppColors.subtext1 : AppColors.text,
-                    letterSpacing: -1,
-                    height: 1.1,
-                  ),
+                  style: FeedCardStyles.title(isRead: isRead),
                 ),
                 if (subtitle != null && subtitle!.isNotEmpty) ...[
-                  SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Text(
                     subtitle!,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.manrope(
-                      fontSize: 16,
-                      color: isRead ? AppColors.overlay0 : AppColors.subtext1,
-                      height: 1.5,
-                    ),
+                    style: FeedCardStyles.subtitle(isRead: isRead),
                   ),
                 ]
               ],

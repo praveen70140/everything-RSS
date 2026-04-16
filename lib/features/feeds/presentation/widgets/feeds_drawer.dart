@@ -9,6 +9,7 @@ import '../pages/app_settings_page.dart';
 import '../pages/feed_settings_page.dart';
 import '../pages/saved_feeds_page.dart';
 import '../pages/third_party_servers_page.dart';
+import '../utils/url_validation.dart';
 
 class FeedsDrawer extends StatefulWidget {
   final Function(String? url, {String? feedName}) onFeedSelected;
@@ -53,7 +54,7 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
   Future<void> _addNewFolder() async {
     if (_folderController.text.trim().isNotEmpty) {
       final newFolder = LocalFeedFolder()
-        ..name = _folderController.text.trim().toUpperCase()
+        ..name = _folderController.text.trim()
         ..isExpanded = true
         ..sortOrder = _folders.length;
 
@@ -64,8 +65,7 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
     }
   }
 
-  Future<void> _addNewFeed() async {
-    final url = _feedController.text.trim();
+  Future<void> _addNewFeed(String url) async {
     if (url.isNotEmpty) {
       String name = 'New Feed';
       try {
@@ -174,10 +174,40 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
     final servers = await localDb.getThirdPartyServers();
     if (servers.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content:
-                  Text('Please add a third-party server first in settings.')),
+        final drawerNavigator = Navigator.of(context);
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: AppColors.base,
+            title: Text('Setup discovery server',
+                style: TextStyle(color: AppColors.text)),
+            content: Text(
+              'Discovery requires a self-hosted instance of RSSHub or a yt-dlp-RSS proxy. Configure one in Servers first.',
+              style: TextStyle(color: AppColors.subtext1),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child:
+                    Text('Cancel', style: TextStyle(color: AppColors.subtext1)),
+              ),
+              ElevatedButton(
+                style:
+                    ElevatedButton.styleFrom(backgroundColor: AppColors.blue),
+                onPressed: () {
+                  Navigator.pop(context);
+                  drawerNavigator.pop();
+                  drawerNavigator.push(
+                    MaterialPageRoute(
+                      builder: (_) => const ThirdPartyServersPage(),
+                    ),
+                  );
+                },
+                child:
+                    Text('Go to Servers', style: TextStyle(color: AppColors.base)),
+              ),
+            ],
+          ),
         );
       }
       return;
@@ -194,11 +224,16 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
         return StatefulBuilder(builder: (context, setState) {
           return AlertDialog(
             backgroundColor: AppColors.base,
-            title: Text('Discover / Search',
-                style: TextStyle(color: AppColors.text)),
+            title:
+                Text('Discover feeds', style: TextStyle(color: AppColors.text)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                Text(
+                  'Choose the source server to search, then enter a topic or channel.',
+                  style: TextStyle(color: AppColors.subtext1),
+                ),
+                SizedBox(height: 12),
                 DropdownButton<ThirdPartyServer>(
                   value: selectedServer,
                   isExpanded: true,
@@ -283,36 +318,39 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
   @override
   Widget build(BuildContext context) {
     return Drawer(
+      backgroundColor: AppColors.base,
       child: SafeArea(
         child: Column(
           children: [
             Padding(
               padding:
-                  const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
               child: Row(
                 children: [
-                  Icon(Icons.rss_feed, color: AppColors.blue),
-                  SizedBox(width: 8),
+                  Icon(Icons.rss_feed, color: AppColors.blue, size: 28),
+                  SizedBox(width: 12),
                   Text(
-                    'FEEDS',
+                    'Everything RSS',
                     style: GoogleFonts.epilogue(
                       fontWeight: FontWeight.w900,
-                      fontSize: 18,
+                      fontSize: 20,
+                      color: AppColors.text,
                     ),
                   ),
                 ],
               ),
             ),
+            _buildSectionLabel('READING'),
             ListTile(
-              leading: Icon(Icons.all_inbox, color: AppColors.text),
+              leading: Icon(Icons.all_inbox, color: AppColors.text, size: 22),
               title: Text('All Feeds',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              onTap: () => widget.onFeedSelected(null, feedName: 'ALL FEEDS'),
+                  style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
+              onTap: () => widget.onFeedSelected(null, feedName: 'All Feeds'),
             ),
             ListTile(
-              leading: Icon(Icons.watch_later_outlined, color: AppColors.green),
+              leading: Icon(Icons.watch_later_outlined, color: AppColors.green, size: 22),
               title:
-                  Text('To do', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text('To do', style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
               onTap: () {
                 Navigator.pop(context); // Close drawer
                 Navigator.push(
@@ -327,9 +365,9 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.archive_outlined, color: AppColors.mauve),
+              leading: Icon(Icons.archive_outlined, color: AppColors.mauve, size: 22),
               title: Text('Archive',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
               onTap: () {
                 Navigator.pop(context); // Close drawer
                 Navigator.push(
@@ -343,35 +381,8 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                 );
               },
             ),
-            ListTile(
-              leading: Icon(Icons.search, color: AppColors.blue),
-              title: Text('Discover',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              onTap: _showSearchDialog,
-            ),
-            Divider(color: AppColors.surface1),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildActionButton(
-                      icon: Icons.add_circle,
-                      label: 'FEED',
-                      onTap: _showAddFeedSheet,
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: _buildActionButton(
-                      icon: Icons.create_new_folder,
-                      label: 'FOLDER',
-                      onTap: _showAddFolderSheet,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            Divider(color: AppColors.surface1, indent: 16, endIndent: 16, height: 24),
+            _buildSectionLabel('SOURCES'),
             Expanded(
               child: _isLoading
                   ? Center(
@@ -384,15 +395,14 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                       builder: (context, candidateData, rejectedData) {
                         return Container(
                           color: candidateData.isNotEmpty
-                              ? AppColors.surface0.withOpacity(0.2)
+                              ? AppColors.surface0.withValues(alpha: 0.2)
                               : Colors.transparent,
                           child: ListView(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8.0, vertical: 8.0),
+                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
                             children: [
                               ..._folders
                                   .map((folder) => _buildFolderTarget(folder)),
-                              SizedBox(height: 8),
+                              SizedBox(height: 4),
                               ..._feeds
                                   .where((f) => f.folderId == null)
                                   .map((feed) => _buildDraggableFeed(feed)),
@@ -403,16 +413,37 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                     ),
             ),
             Divider(height: 1, color: AppColors.surface1),
-            ListTile(
-              leading: Icon(Icons.hub, color: AppColors.blue, size: 20),
-              title: Text(
-                'Third-Party Servers',
-                style: GoogleFonts.manrope(
-                  color: AppColors.text,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
+            _buildSectionLabel('MANAGE'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildActionButton(
+                      icon: Icons.add_link,
+                      label: 'Add Feed',
+                      onTap: _showAddFeedSheet,
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: _buildActionButton(
+                      icon: Icons.create_new_folder_outlined,
+                      label: 'New Folder',
+                      onTap: _showAddFolderSheet,
+                    ),
+                  ),
+                ],
               ),
+            ),
+            _buildManageTile(
+              icon: Icons.search,
+              label: 'Discover Feeds',
+              onTap: _showSearchDialog,
+            ),
+            _buildManageTile(
+              icon: Icons.hub_outlined,
+              label: 'Servers (RSSHub, yt-dlp)',
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -422,16 +453,9 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                 );
               },
             ),
-            ListTile(
-              leading: Icon(Icons.settings, color: AppColors.blue, size: 20),
-              title: Text(
-                'App Settings',
-                style: GoogleFonts.manrope(
-                  color: AppColors.text,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
-              ),
+            _buildManageTile(
+              icon: Icons.settings_outlined,
+              label: 'App Settings',
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -441,9 +465,44 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                 );
               },
             ),
+            const SizedBox(height: 12),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSectionLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          label,
+          style: GoogleFonts.manrope(
+            color: AppColors.overlay0,
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.2,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildManageTile({required IconData icon, required String label, required VoidCallback onTap}) {
+    return ListTile(
+      leading: Icon(icon, color: AppColors.subtext1, size: 20),
+      title: Text(
+        label,
+        style: GoogleFonts.manrope(
+          color: AppColors.text,
+          fontWeight: FontWeight.w500,
+          fontSize: 14,
+        ),
+      ),
+      dense: true,
+      onTap: onTap,
     );
   }
 
@@ -453,25 +512,25 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
       required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           color: AppColors.surface0,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.surface1.withValues(alpha: 0.5)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: AppColors.blue, size: 16),
-            SizedBox(width: 6),
+            Icon(icon, color: AppColors.blue, size: 18),
+            SizedBox(width: 8),
             Text(
               label,
               style: GoogleFonts.manrope(
-                color: AppColors.blue,
+                color: AppColors.text,
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
               ),
             ),
           ],
@@ -489,78 +548,101 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-          left: 24,
-          right: 24,
-          top: 24,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Add New Feed',
-              style: GoogleFonts.epilogue(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppColors.text,
-              ),
+      builder: (context) {
+        String? errorText;
+
+        Future<void> submit(StateSetter setModalState) async {
+          final validation = validateHttpUrl(_feedController.text);
+          if (!validation.isValid) {
+            setModalState(() => errorText = validation.message);
+            return;
+          }
+
+          Navigator.pop(context);
+          await _addNewFeed(validation.normalizedUrl!);
+        }
+
+        return StatefulBuilder(builder: (context, setModalState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+              left: 24,
+              right: 24,
+              top: 24,
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _feedController,
-              style: TextStyle(color: AppColors.text),
-              decoration: InputDecoration(
-                hintText: 'https://rss-link.com',
-                hintStyle: TextStyle(color: AppColors.overlay0),
-                filled: true,
-                fillColor: AppColors.base,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.surface1),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.blue),
-                ),
-              ),
-              autofocus: true,
-              onSubmitted: (_) {
-                Navigator.pop(context);
-                _addNewFeed();
-              },
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.blue,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.pop(context);
-                  _addNewFeed();
-                },
-                child: Text(
-                  'ADD FEED',
-                  style: TextStyle(
-                    color: AppColors.base,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Add feed',
+                  style: GoogleFonts.epilogue(
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
+                    color: AppColors.text,
                   ),
                 ),
-              ),
+                const SizedBox(height: 8),
+                Text(
+                  'Paste an RSS, Atom, or website feed link.',
+                  style: TextStyle(color: AppColors.subtext1),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _feedController,
+                  style: TextStyle(color: AppColors.text),
+                  decoration: InputDecoration(
+                    labelText: 'Feed URL',
+                    errorText: errorText,
+                    hintText: 'https://example.com/feed.xml',
+                    hintStyle: TextStyle(color: AppColors.overlay0),
+                    filled: true,
+                    fillColor: AppColors.base,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppColors.surface1),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppColors.blue),
+                    ),
+                  ),
+                  keyboardType: TextInputType.url,
+                  autofocus: true,
+                  onChanged: (_) {
+                    if (errorText != null) {
+                      setModalState(() => errorText = null);
+                    }
+                  },
+                  onSubmitted: (_) => submit(setModalState),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.blue,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onPressed: () => submit(setModalState),
+                    child: Text(
+                      'Add feed',
+                      style: TextStyle(
+                        color: AppColors.base,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
             ),
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
+          );
+        });
+      },
     );
   }
 
@@ -585,7 +667,7 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Create New Folder',
+              'Create folder',
               style: GoogleFonts.epilogue(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -632,11 +714,10 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                   _addNewFolder();
                 },
                 child: Text(
-                  'CREATE FOLDER',
+                  'Create folder',
                   style: TextStyle(
                     color: AppColors.base,
                     fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
                   ),
                 ),
               ),
@@ -664,12 +745,12 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
         final isHovered = candidateData.isNotEmpty;
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 2),
+          margin: const EdgeInsets.only(bottom: 4),
           decoration: BoxDecoration(
               color: isHovered
-                  ? AppColors.surface0.withOpacity(0.6)
+                  ? AppColors.surface0.withValues(alpha: 0.6)
                   : Colors.transparent,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: isHovered ? AppColors.blue : Colors.transparent,
               )),
@@ -687,26 +768,30 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
                 setState(() => folder.isExpanded = val);
                 localDb.saveFolder(folder);
               },
-              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
-              trailing: SizedBox.shrink(),
+              tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+              trailing: Icon(
+                folder.isExpanded ? Icons.expand_less : Icons.expand_more,
+                size: 18,
+                color: AppColors.overlay0,
+              ),
               leading: Icon(
                 folder.isExpanded ? Icons.folder_open : Icons.folder,
                 color: isHovered ? AppColors.blue : AppColors.mauve,
+                size: 22,
               ),
               title: Text(
                 folder.name,
-                style: TextStyle(
+                style: GoogleFonts.manrope(
                   color: AppColors.text,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               iconColor: AppColors.overlay0,
               collapsedIconColor: AppColors.overlay0,
               children: folderFeeds
                   .map((feed) => Padding(
-                        padding: const EdgeInsets.only(left: 12.0),
+                        padding: const EdgeInsets.only(left: 16.0),
                         child: _buildDraggableFeed(feed),
                       ))
                   .toList(),
@@ -779,11 +864,15 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
 
   Widget _buildFeedTile(LocalFeedItem feed) {
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-      leading: Icon(Icons.rss_feed, color: AppColors.green, size: 20),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+      leading: Icon(Icons.rss_feed, color: AppColors.green, size: 18),
       title: Text(
         feed.name,
-        style: TextStyle(color: AppColors.subtext1, fontSize: 14),
+        style: GoogleFonts.manrope(
+          color: AppColors.subtext1,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
       ),
       trailing: PopupMenuButton<String>(
         icon: Icon(Icons.more_vert, color: AppColors.overlay0, size: 18),
@@ -792,22 +881,22 @@ class _FeedsDrawerState extends State<FeedsDrawer> {
           PopupMenuItem(
             value: 'rename',
             child: Text('Rename',
-                style: TextStyle(color: AppColors.text, fontSize: 12)),
+                style: TextStyle(color: AppColors.text, fontSize: 13)),
           ),
           PopupMenuItem(
             value: 'archive',
             child: Text('View Archive',
-                style: TextStyle(color: AppColors.text, fontSize: 12)),
+                style: TextStyle(color: AppColors.text, fontSize: 13)),
           ),
           PopupMenuItem(
             value: 'todo',
             child: Text('View To-Do',
-                style: TextStyle(color: AppColors.text, fontSize: 12)),
+                style: TextStyle(color: AppColors.text, fontSize: 13)),
           ),
           PopupMenuItem(
             value: 'settings',
             child: Text('Settings',
-                style: TextStyle(color: AppColors.text, fontSize: 12)),
+                style: TextStyle(color: AppColors.text, fontSize: 13)),
           ),
         ],
         onSelected: (value) {

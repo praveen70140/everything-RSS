@@ -33,19 +33,21 @@ class MediaState {
 
   MediaState copyWith({
     MediaItem? mediaItem,
+    bool clearMediaItem = false,
     Duration? position,
     Duration? bufferedPosition,
     PlaybackState? playbackState,
     double? speed,
     DateTime? sleepTimerEndTime,
+    bool clearSleepTimer = false,
   }) {
     return MediaState(
-      mediaItem: mediaItem ?? this.mediaItem,
+      mediaItem: clearMediaItem ? null : (mediaItem ?? this.mediaItem),
       position: position ?? this.position,
       bufferedPosition: bufferedPosition ?? this.bufferedPosition,
       playbackState: playbackState ?? this.playbackState,
       speed: speed ?? this.speed,
-      sleepTimerEndTime: sleepTimerEndTime ?? this.sleepTimerEndTime,
+      sleepTimerEndTime: clearSleepTimer ? null : (sleepTimerEndTime ?? this.sleepTimerEndTime),
     );
   }
 }
@@ -65,7 +67,11 @@ class MediaStateNotifier extends Notifier<MediaState> {
     if (handler == null) return;
 
     handler.mediaItem.listen((item) {
-      state = state.copyWith(mediaItem: item);
+      if (item == null) {
+        state = state.copyWith(clearMediaItem: true);
+      } else {
+        state = state.copyWith(mediaItem: item);
+      }
     });
 
     handler.playbackState.listen((playbackState) {
@@ -127,14 +133,7 @@ class MediaStateNotifier extends Notifier<MediaState> {
   void clearSleepTimer() {
     _sleepTimer?.cancel();
     _sleepTimer = null;
-    state = MediaState(
-      mediaItem: state.mediaItem,
-      position: state.position,
-      bufferedPosition: state.bufferedPosition,
-      playbackState: state.playbackState,
-      speed: state.speed,
-      sleepTimerEndTime: null, // explicit null
-    );
+    state = state.copyWith(clearSleepTimer: true);
   }
 }
 

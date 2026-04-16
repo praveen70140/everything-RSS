@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/database/local_db.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/models/third_party_server.dart';
+import '../utils/url_validation.dart';
 
 class ThirdPartyServersPage extends StatefulWidget {
   const ThirdPartyServersPage({Key? key}) : super(key: key);
@@ -35,14 +36,18 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
 
   Future<void> _addOrUpdateServer(String url, String name, String serverType,
       {ThirdPartyServer? existingServer}) async {
-    if (url.isEmpty) return;
+    final validation = validateHttpUrl(url);
+    if (!validation.isValid) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(validation.message!)),
+        );
+      }
+      return;
+    }
 
     setState(() => _isLoading = true);
-
-    // Ensure URL has http/https scheme
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'https://$url';
-    }
+    url = validation.normalizedUrl!;
 
     try {
       List<String> domains = [];
@@ -64,8 +69,7 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
               'Failed to load links.txt (Status: ${response.statusCode})');
         }
       } else if (serverType == 'rsshub') {
-        // RSSHub supports hundreds of domains natively via routing, no need to fetch links.txt
-        domains = ['*']; // We'll handle routing logic in getProxyUrl
+        domains = ['*']; 
       }
 
       final server = existingServer ??
@@ -86,8 +90,12 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content:
-                  Text('Server added/updated successfully. Type: $serverType')),
+            content: Text(
+              serverType == 'rsshub'
+                  ? 'RSSHub instance saved.'
+                  : 'yt-dlp-RSS proxy saved.',
+            ),
+          ),
         );
       }
 
@@ -96,13 +104,41 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error adding server: $e')),
+          SnackBar(
+            content: Text(
+              'Could not reach this server. Check the URL and try again. ${e.toString()}',
+            ),
+          ),
         );
       }
     }
   }
 
   Future<void> _deleteServer(ThirdPartyServer server) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.base,
+        title: Text('Remove server?', style: TextStyle(color: AppColors.text)),
+        content: Text(
+          'Discovery that depends on this ${server.serverType == 'rsshub' ? 'RSSHub' : 'yt-dlp-RSS'} instance will stop working.',
+          style: TextStyle(color: AppColors.subtext1),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: AppColors.subtext1)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Remove', style: TextStyle(color: AppColors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
     await localDb.deleteThirdPartyServer(server.id);
     _loadServers();
   }
@@ -111,6 +147,7 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
     final urlController = TextEditingController(text: server?.url);
     final nameController = TextEditingController(text: server?.name);
     String selectedType = server?.serverType ?? 'ytdlp';
+    String? urlError;
 
     showDialog(
       context: context,
@@ -119,7 +156,7 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
           return AlertDialog(
             backgroundColor: AppColors.base,
             title: Text(
-                server == null ? 'Add Third-Party Server' : 'Edit Server',
+                server == null ? 'Add Discovery Server' : 'Edit Server',
                 style: TextStyle(color: AppColors.text)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -137,7 +174,7 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
                     ),
                     DropdownMenuItem(
                       value: 'rsshub',
-                      child: Text('RSSHub Proxy'),
+                      child: Text('RSSHub Instance'),
                     ),
                   ],
                   onChanged: (val) {
@@ -153,7 +190,7 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
                   decoration: InputDecoration(
                     labelText: 'Name (Optional)',
                     labelStyle: TextStyle(color: AppColors.overlay0),
-                    hintText: 'My Proxy',
+                    hintText: 'My Instance',
                     hintStyle: TextStyle(color: AppColors.surface1),
                     enabledBorder: UnderlineInputBorder(
                       borderSide: BorderSide(color: AppColors.surface1),
@@ -169,6 +206,7 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
                   style: TextStyle(color: AppColors.text),
                   decoration: InputDecoration(
                     labelText: 'Server URL',
+                    errorText: urlError,
                     labelStyle: TextStyle(color: AppColors.overlay0),
                     hintText: selectedType == 'rsshub'
                         ? 'https://rsshub.app'
@@ -182,6 +220,18 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
                     ),
                   ),
                   keyboardType: TextInputType.url,
+                  onChanged: (_) {
+                    if (urlError != null) {
+                      setDialogState(() => urlError = null);
+                    }
+                  },
+                ),
+                SizedBox(height: 12),
+                Text(
+                  selectedType == 'rsshub'
+                      ? 'RSSHub converts social media and websites into RSS feeds.'
+                      : 'yt-dlp-RSS proxies expose YouTube/SoundCloud channels as feeds.',
+                  style: TextStyle(color: AppColors.subtext1, fontSize: 12),
                 ),
               ],
             ),
@@ -195,9 +245,14 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
                 style:
                     ElevatedButton.styleFrom(backgroundColor: AppColors.blue),
                 onPressed: () {
+                  final validation = validateHttpUrl(urlController.text);
+                  if (!validation.isValid) {
+                    setDialogState(() => urlError = validation.message);
+                    return;
+                  }
                   Navigator.pop(context);
-                  _addOrUpdateServer(
-                      urlController.text, nameController.text, selectedType,
+                  _addOrUpdateServer(validation.normalizedUrl!,
+                      nameController.text, selectedType,
                       existingServer: server);
                 },
                 child: Text('Save', style: TextStyle(color: AppColors.base)),
@@ -212,9 +267,11 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.base,
       appBar: AppBar(
+        backgroundColor: AppColors.base,
         title: Text(
-          'Third-Party Servers',
+          'Discovery Servers',
           style: GoogleFonts.epilogue(
             fontWeight: FontWeight.w900,
             fontSize: 16,
@@ -230,17 +287,18 @@ class _ThirdPartyServersPageState extends State<ThirdPartyServersPage> {
           ? Center(child: CircularProgressIndicator(color: AppColors.blue))
           : _servers.isEmpty
               ? Center(
-                  child: Text('No third-party servers added yet.',
+                  child: Text('No Discovery servers configured.',
                       style: TextStyle(color: AppColors.subtext1)))
               : ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
                   itemCount: _servers.length,
                   itemBuilder: (context, index) {
                     final server = _servers[index];
                     return ListTile(
                       title: Text(server.name,
-                          style: TextStyle(fontWeight: FontWeight.bold)),
+                          style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.text)),
                       subtitle: Text(
-                          'Type: ${server.serverType}\nURL: ${server.url}',
+                          '${server.serverType == 'rsshub' ? 'RSSHub Instance' : 'yt-dlp-RSS Proxy'}\n${server.url}',
                           style: TextStyle(color: AppColors.subtext1)),
                       isThreeLine: true,
                       trailing: Row(

@@ -56,8 +56,8 @@ class LocalDatabase {
       await f2.save();
 
       final feed1 = LocalFeedItem()
-        ..name = 'NYT Technology'
-        ..url = 'https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml'
+        ..name = 'Hacker News'
+        ..url = 'https://news.ycombinator.com/rss'
         ..folderId = f1Id
         ..sortOrder = 0;
       final feed2 = LocalFeedItem()

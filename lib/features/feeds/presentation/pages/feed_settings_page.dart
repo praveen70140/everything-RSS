@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/database/local_db.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../data/models/local_feed_item.dart';
 import '../../../../core/theme/app_colors.dart';
 
@@ -25,12 +25,12 @@ class _FeedSettingsPageState extends State<FeedSettingsPage> {
     autoDownloadTime = widget.feed.autoDownloadTime;
   }
 
-  Future<void> _saveSettings() async {
+  Future<void> _saveSettings({bool showConfirmation = false}) async {
     widget.feed.autoDownload = autoDownload;
     widget.feed.requireWiFi = requireWiFi;
     widget.feed.autoDownloadTime = autoDownloadTime;
     await widget.feed.save();
-    if (mounted) {
+    if (mounted && showConfirmation) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Settings saved successfully.')),
       );
@@ -62,12 +62,16 @@ class _FeedSettingsPageState extends State<FeedSettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.base,
+      backgroundColor: AppColors.crust,
       appBar: AppBar(
         title: Text('${widget.feed.name} Settings'),
-        backgroundColor: AppColors.mantle,
+        backgroundColor: AppColors.crust,
         iconTheme: IconThemeData(color: AppColors.text),
-        titleTextStyle: TextStyle(color: AppColors.text, fontSize: 20),
+        titleTextStyle: GoogleFonts.manrope(
+          color: AppColors.text,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -83,7 +87,7 @@ class _FeedSettingsPageState extends State<FeedSettingsPage> {
               setState(() => autoDownload = val);
               _saveSettings();
             },
-            activeColor: AppColors.green,
+            activeThumbColor: AppColors.green,
           ),
           if (autoDownload) ...[
             SwitchListTile(
@@ -96,7 +100,7 @@ class _FeedSettingsPageState extends State<FeedSettingsPage> {
                 setState(() => requireWiFi = val);
                 _saveSettings();
               },
-              activeColor: AppColors.green,
+              activeThumbColor: AppColors.green,
             ),
             ListTile(
               title: Text('Scheduled Time',
