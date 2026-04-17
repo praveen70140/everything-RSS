@@ -56,27 +56,17 @@ class LocalDatabase {
       await f2.save();
 
       final feed1 = LocalFeedItem()
-        ..name = 'Hacker News'
-        ..url = 'https://news.ycombinator.com/rss'
+        ..name = 'The Verge'
+        ..url = 'https://www.theverge.com/rss/index.xml'
         ..folderId = f1Id
         ..sortOrder = 0;
       final feed2 = LocalFeedItem()
-        ..name = 'NASA Video'
-        ..url = 'https://www.nasa.gov/rss/dyn/twan_vodcast.rss'
-        ..folderId = f1Id
-        ..sortOrder = 1;
-      final feed3 = LocalFeedItem()
         ..name = 'NPR Podcast'
         ..url = 'https://feeds.npr.org/500005/podcast.xml'
         ..folderId = f2Id
         ..sortOrder = 0;
-      final feed4 = LocalFeedItem()
-        ..name = 'The Verge'
-        ..url = 'https://www.theverge.com/rss/index.xml'
-        ..folderId = null
-        ..sortOrder = 0;
 
-      final feeds = [feed1, feed2, feed3, feed4];
+      final feeds = [feed1, feed2];
       for (var f in feeds) {
         final id = await _feedsBox.add(f);
         f.id = id;
